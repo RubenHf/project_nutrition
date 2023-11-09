@@ -1,1 +1,1 @@
-web: gunicorn NutritionApp:server
+web: gunicorn app/NutritionApp:server
