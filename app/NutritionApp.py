@@ -8,13 +8,15 @@ from plotly.subplots import make_subplots
 import copy
 import os
 
-# Get the current directory of the notebook
-file_dir = os.getcwd()
-app_dir = os.path.dirname(file_dir)
+# Get the directory of the script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Go up one level to the parent directory (assuming the script is in the 'app' directory)
+app_dir = os.path.dirname(script_dir)
 
 # Define the path to the file in the /files directory
 file_path = os.path.join(app_dir, 'files', 'donnees_nettoyees.csv')
-
+print(file_path)
 # Now you can use the file_path to access your file
 with open(file_path, 'r') as file:
     data = pd.read_csv(file_path, sep = "\t")
