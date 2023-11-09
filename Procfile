@@ -1,0 +1,1 @@
+web: gunicorn nutritious-food-app:server
