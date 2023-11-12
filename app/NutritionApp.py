@@ -290,7 +290,7 @@ def data_slicing(country, pnns1, pnns2,
                  df_origin, df_intermediaire, df_inter_slide, df_slice):
 
     sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
-    elapsed_time = time.time()
+
     # Initial call
     if df_origin is None:
         df_origin = data.to_json(orient='split')
@@ -361,7 +361,7 @@ def data_slicing(country, pnns1, pnns2,
                 df_slice = df_slice[(df_slice[nutrient] >= slide[0]) & (df_slice[nutrient] <= slide[1])]
 
         df_slice = df_slice.to_json(orient='split')
-    print("Data slicing", time.time() - elapsed_time)    
+
     return df_origin, df_intermediaire, df_inter_slide, df_slice
 
 
@@ -451,7 +451,6 @@ def choice_pnns_groups(pnns1, pnns2, country, pnns_groups_1, pnns_groups_2):
     prevent_initial_call=True,
 )
 def update_sliders(df_inter_slide, n_clicks):
-    elapsed_time = time.time()
             
     # If we change the data
     if (df_inter_slide != None) & (ctx.triggered_id == "intermed_slide_file" or 
@@ -467,7 +466,6 @@ def update_sliders(df_inter_slide, n_clicks):
             nutrient_marks = {nutrient_min: str(nutrient_min), nutrient_max: str(nutrient_max)}
             output_values.extend([nutrient_min, nutrient_max, nutrient_marks, [math.floor(nutrient_min), math.ceil(nutrient_max)]])
             
-        print("update_sliders", time.time() - elapsed_time)
 
         return tuple(output_values)
 
@@ -483,12 +481,10 @@ def update_sliders(df_inter_slide, n_clicks):
 def search_bar_options(df_inter_slide):
     if df_inter_slide is not None :
         
-        elapsed_time = time.time()
         df_inter_slide = pd.read_json(StringIO(df_inter_slide), orient='split')
         
         # Extract the "product_name" values, get unique sorted values and sort them
         search_bar_options = df_inter_slide.product_name.sort_values().unique()
-        print("search_bar_options : ", time.time() - elapsed_time)
         return search_bar_options
     
     else :
@@ -506,7 +502,6 @@ def search_bar_options(df_inter_slide):
 )
 
 def table_showing(sort_by, df_slice, search_bar_values, df_inter_slide):
-    elapsed_time = time.time()
         
     if df_slice != None :
         df_slice = pd.read_json(StringIO(df_slice), orient='split')
@@ -555,7 +550,6 @@ def table_showing(sort_by, df_slice, search_bar_values, df_inter_slide):
                     'backgroundColor': "tomato" if row >= len(df_slice[:20 - len(df_inter_slide)]) else "green",
                     'color': 'white'
                 })
-            print("table_showing", time.time() - elapsed_time)
         
             return concat_df.to_dict('records'), style_data_conditional
         
@@ -576,12 +570,10 @@ def table_showing(sort_by, df_slice, search_bar_values, df_inter_slide):
 
 # We produce the main graphic depending of several input
 def graph_macronutrients(nutrients_choice, ch_list_graph, df_slice):
-    elapsed_time = time.time()
     if df_slice != None :
         
         df_slice = pd.read_json(StringIO(df_slice), orient='split')
         
-        print("graph_macronutrients", time.time() - elapsed_time)
         return fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) 
     
     # If no country selected, no data to show
