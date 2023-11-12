@@ -1,2 +1,11 @@
+Version 0.2.0
+Addition number of products in each categories (country, pnns_groups_1, pnns_groups_2)
+Better caching of datas
+Better trigger consideration
+Re writing of dashboard code for easier reading
+Addition of sliders products selection
+Sliders min and max values are depending of the array of products
+Addition of a search bar for product, with color code for good and bad products
+
 Version 0.1.0 
 First release of the dashboard

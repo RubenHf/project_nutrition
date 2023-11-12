@@ -7,6 +7,8 @@ import plotly.subplots as sp
 from plotly.subplots import make_subplots
 import copy
 import os
+import math
+from io import StringIO
 
 # Get the directory of the script
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,11 +18,115 @@ app_dir = os.path.dirname(script_dir)
 
 # Define the path to the file in the /files directory
 file_path = os.path.join(app_dir, 'files', 'donnees_nettoyees.csv')
-print(file_path)
+
 # Now you can use the file_path to access your file
 with open(file_path, 'r') as file:
     data = pd.read_csv(file_path, sep = "\t")
 
+
+def pnns_groups_options(df, country, pnns_groups_num, pnns1 = None):
+    if pnns_groups_num == "pnns_groups_1":
+        pnns_groups = df[pnns_groups_num].unique()
+    elif pnns_groups_num == "pnns_groups_2":
+        pnns_groups = df.loc[df.pnns_groups_1 == pnns1, pnns_groups_num].unique()
+
+    pnns_groups = [
+    {
+        'label': f"{pnns} [{df[df.countries_en.str.contains(country)&(df[pnns_groups_num] == pnns)].shape[0]} products]",
+        'value': pnns
+    } 
+    for pnns in pnns_groups
+    ]
+
+    return pnns_groups
+
+# Function to generate a RangeSlider
+def generate_slider(title, id, max_value):
+    return html.Div([title,
+                     dcc.RangeSlider(0, max_value, 1, value=[0, max_value],
+                                    marks={0: "0", max_value: str(max_value)},
+                                    id=id,
+                                    tooltip={"placement": "bottom", "always_visible": True})
+                     ], style={'textAlign': 'center', 'color': 'black', 'fontSize': 15})
+
+
+# Function to generate a DropDown
+def generate_dropdown(value, options, placeholder, multi, id):
+    return dcc.Dropdown(
+                value=value,
+                options=options,
+                style={'textAlign': 'left', 'color': 'black', 'fontSize': 15, 'width': '100%'},
+                placeholder=placeholder,
+                multi=multi,
+                id=id
+            )
+
+def fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) :
+    
+    # To have Energy and the nutrients on the same graph
+    figure_nutrients = make_subplots(specs=[[{"secondary_y": True}]])
+    
+    if nutrients_choice == []:
+        nutrients_choice = None
+    
+    # No Figure
+    if len(ch_list_graph) == 0 :#or country == None:
+        return px.box()
+    
+    elif len(ch_list_graph) == 1:
+        if "Distribution" in ch_list_graph :
+            figure_nutrients1 = px.box(df_slice, y="energy_100g", hover_data=["product_name"]) 
+            #figure_nutrients2 = px.box()
+            #for nut in nutrients:
+             #   figure_nutrients2.add_traces(px.box(mask, y=nut).data[0])
+            figure_nutrients2 = px.box(df_slice, y=nutrients_choice, hover_data=["product_name"]) if nutrients_choice != None else px.box(df_slice, y=nutrients, hover_data=["product_name"])
+
+        elif "Products" in ch_list_graph :
+            figure_nutrients1 = px.strip(df_slice, y="energy_100g", hover_data=["product_name"]) 
+            figure_nutrients2 = px.strip(df_slice, y=nutrients_choice, hover_data=["product_name"]) if nutrients_choice != None else px.strip(df_slice, y=nutrients, hover_data=["product_name"])                
+
+    elif len(ch_list_graph) == 2:
+
+        figure_nutrients1 = px.box(df_slice, y="energy_100g", hover_data=["product_name"])
+        figure_nutrients1.add_trace(px.strip(df_slice, y="energy_100g", hover_data=["product_name"]).data[0])
+        figure_nutrients1.update_traces(offsetgroup=0.5)
+
+        figure_nutrients2 = px.box(df_slice, 
+                                   y=nutrients_choice, 
+                                   hover_data=["product_name"], 
+                                   points = False) if nutrients_choice != None else px.box(df_slice, 
+                                                      y=nutrients, 
+                                                      hover_data=["product_name"], 
+                                                      points = False
+                                    )
+        figure_nutrients2.add_trace(px.strip(df_slice, 
+                                             y=nutrients_choice, 
+                                             hover_data=["product_name"]
+                                    ).data[0] if nutrients_choice != None else px.strip(df_slice, 
+                                                y=nutrients, 
+                                                hover_data=["product_name"]).data[0])
+        figure_nutrients2.update_traces(offsetgroup=0.5)
+            
+    figure_nutrients1.update_traces(marker = dict(color = "red"))
+    figure_nutrients2.update_traces(marker = dict(color = "green"))
+
+    for i in range(len(figure_nutrients1.data)):
+        figure_nutrients.add_trace(figure_nutrients1.data[i], secondary_y=False)
+        figure_nutrients.add_trace(figure_nutrients2.data[i], secondary_y=True)
+
+    # Update of figure layout
+    figure_nutrients.update_layout(
+        yaxis_title="g/100g",
+        title=dict(text="Distribution of macronutrients of selected products",
+                   font=dict(size=24, color="black"), x=0.5, xanchor='center'),
+        font=dict(size=18, color="black"),
+    )
+
+    # Set y-axes titles
+    figure_nutrients.update_yaxes(title_text="g/100g (energy)", secondary_y=False)
+    figure_nutrients.update_yaxes(title_text="g/100g (nutrients)", secondary_y=True)
+    
+    return figure_nutrients
 
 ##### Initialize the app - incorporate css
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -31,14 +137,30 @@ server = app.server
 
 app.title = 'Nutrition app'
 
-versionning = "version: 0.0.1"
+versionning = "version: 0.0.2"
 
 products_availability = "Referenced products: " + str(data.shape[0])
 
 nutrients = ["fat_100g", "saturated-fat_100g", "carbohydrates_100g", "fiber_100g", "proteins_100g", "salt_100g", "Macronutrients"]
 
+slider_trigger = ["slider_energy", "slider_fat", "slider_saturated", "slider_carbohydrates", "slider_fiber", "slider_proteins", "slider_salt", "slider_macronutrients"]
+
 # Default setup
 default_country, default_pnns1, default_pnns2 = "France", "Fruits and vegetables", "Soups"
+
+# Options setup for dropdown of countries
+c1 = [country.split(",") for country in data.countries_en.unique()]
+c2 = [count for country in c1 for count in country]
+unique_countries = sorted(list(set(c2)))
+
+unique_countries = [
+    {
+        'label': f"{country} [{data[data.countries_en.str.contains(country)].shape[0]} products]",
+        'value': country
+    } 
+    for country in unique_countries[1:]
+]
+
 
 app.layout = html.Div([
     
@@ -64,44 +186,29 @@ app.layout = html.Div([
     # Horizontale line
     html.Hr(style={'border-top': '4px solid black'}), 
     
+    # Dropdown for the countries
     html.Div([
-        dcc.Dropdown(
-            value=default_country,
-            style={'textAlign': 'left', 'color': 'black', 'fontSize': 15, 'width': '100%'},
-            placeholder="Choose a country",
-            multi=False,
-            id='dropdown_country')
+        generate_dropdown(default_country, unique_countries, "Choose a country", False, 'dropdown_country')
     ], style={'margin': 'auto', 'width': '33%'}),
     
     # Dropdown for the pnns_groups_1
     html.Div([
-        dcc.Dropdown(
-            value=default_pnns1, 
-            style={'textAlign': 'left', 'color': 'black', 'fontSize': 15, 'width': '100%'},
-            placeholder="Choose a PNNS group 1",
-            multi=False,
-            id='dropdown_pnns1')
+        generate_dropdown(default_pnns1, [], "Choose a PNNS group 1", False, 'dropdown_pnns1')
     ], style={'display': 'inline-block', 'width': '50%'}),
     
     # Dropdown for the pnns_groups_2
     html.Div([
-        dcc.Dropdown(
-            value=default_pnns2,
-            style={'textAlign': 'left', 'color': 'black', 'fontSize': 15, 'width': '100%'},
-            placeholder="Choose a PNNS group 2",
-            multi=False,
-            id='dropdown_pnns2')
+        generate_dropdown(default_pnns2, [], "Choose a PNNS group 2", False, 'dropdown_pnns2')
     ], style={'display': 'inline-block', 'width': '50%'}),
         
     # Dropdown for the macronutrient
     html.Div([
-        dcc.Dropdown(
-            value=None,
-            options=nutrients,
-            style={'textAlign': 'left', 'color': 'black', 'fontSize': 15, 'width': '100%'},
-            placeholder="Show nutrients",
-            multi=True,
-            id='dropdown_nutrients')
+        generate_dropdown(None, nutrients, "Choose nutrients", True, 'dropdown_nutrients')
+    ], style={'margin': 'auto'}),
+    
+    # Searchbar products
+    html.Div([
+        generate_dropdown(None, [], "Search a product", True, 'search_bar')
     ], style={'margin': 'auto'}),
     
     # Checklist type of graph
@@ -126,40 +233,18 @@ app.layout = html.Div([
             html.Div([
                 html.Button(html.Strong("Reset"), id="reset_sliders_button", n_clicks=0, style={'color': 'black'})
                      ], style={'textAlign': 'center', 'color': 'black', 'fontSize': 15}),
-            html.Div(["Energy kcal/100g",
-            dcc.RangeSlider(0, 3880, 10, value=[0, 3880], marks={0:"0", 3880:"3880"}, id='slider_energy',
-                           tooltip={"placement": "bottom", "always_visible": True})
-                     ], style={'textAlign': 'center', 'color': 'black', 'fontSize': 15}),
-            html.Div(["Fat g/100g",
-            dcc.RangeSlider(0, 100, 1, value=[0, 100], marks={0:"0", 100:"100"}, id='slider_fat',
-                           tooltip={"placement": "bottom", "always_visible": True})
-                     ], style={'textAlign': 'center', 'color': 'black', 'fontSize': 15}),
-            html.Div(["Saturated_fat g/100g",
-            dcc.RangeSlider(0, 100, 1, value=[0, 100], marks={0:"0", 100:"100"}, id='slider_saturated',
-                           tooltip={"placement": "bottom", "always_visible": True})
-                     ], style={'textAlign': 'center', 'color': 'black', 'fontSize': 15}),
-            html.Div(["Carbohydrates g/100g",
-            dcc.RangeSlider(0, 100, 1, value=[0, 100], marks={0:"0", 100:"100"}, id='slider_carbohydrates',
-                           tooltip={"placement": "bottom", "always_visible": True})
-                     ], style={'textAlign': 'center', 'color': 'black', 'fontSize': 15}),
-            html.Div(["Fiber g/100g",
-            dcc.RangeSlider(0, 100, 1, value=[0, 100], marks={0:"0", 100:"100"}, id='slider_fiber',
-                           tooltip={"placement": "bottom", "always_visible": True})
-                     ], style={'textAlign': 'center', 'color': 'black', 'fontSize': 15}),
-            html.Div(["Proteins g/100g",
-            dcc.RangeSlider(0, 100, 1, value=[0, 100], marks={0:"0", 100:"100"}, id='slider_proteins',
-                           tooltip={"placement": "bottom", "always_visible": True})
-                     ], style={'textAlign': 'center', 'color': 'black', 'fontSize': 15}),
-            html.Div(["Salt g/100g",
-            dcc.RangeSlider(0, 100, 1, value=[0, 100], marks={0:"0", 100:"100"}, id='slider_salt',
-                           tooltip={"placement": "bottom", "always_visible": True})
-                     ], style={'textAlign': 'center', 'color': 'black', 'fontSize': 15}),
-            html.Div(["Macronutrients g/100g",
-            dcc.RangeSlider(0, 100, 1, value=[0, 100], marks={0:"0", 100:"100"}, id='slider_macronutrients',
-                           tooltip={"placement": "bottom", "always_visible": True})
-                     ], style={'textAlign': 'center', 'color': 'black', 'fontSize': 15}),
-        ], style={'width': '20%'}),
-    ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
+
+                generate_slider("Energy kcal/100g", 'slider_energy', 3880),
+                generate_slider("Fat g/100g", 'slider_fat', 100),
+                generate_slider("Saturated_fat g/100g", 'slider_saturated', 100),
+                generate_slider("Carbohydrates g/100g", 'slider_carbohydrates', 100),
+                generate_slider("Fiber g/100g", 'slider_fiber', 100),
+                generate_slider("Proteins g/100g", 'slider_proteins', 100),
+                generate_slider("Salt g/100g", 'slider_salt', 100),
+                generate_slider("Macronutrients g/100g", 'slider_macronutrients', 100)
+
+            ], style={'width': '20%'}),
+        ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
     
     # Table with data selection
     html.Div([
@@ -173,14 +258,107 @@ app.layout = html.Div([
                 sort_mode='multi',
                 sort_by=[{'column_id':'nutriscore_score', 'direction':'asc'}], 
                 id = "table_products"))
-    ], style={'width': '100%'})
+    ], style={'width': '100%'}),
     
+    dcc.Store(id='initial_file', data=None),
+    dcc.Store(id='intermed_file', data=None),
+    dcc.Store(id='intermed_slide_file', data=None),
+    dcc.Store(id='sliced_file', data=None),
 ])
 
+@app.callback(
+    Output('initial_file', 'data'),
+    Output('intermed_file', 'data'),
+    Output('intermed_slide_file', 'data'),
+    Output('sliced_file', 'data'),
+    
+    Input('dropdown_country','value'),
+    Input('dropdown_pnns1','value'),
+    Input('dropdown_pnns2','value'),
+    
+    *[Input(f'{slide}', 'value') for slide in slider_trigger],
+    
+    State('initial_file', 'data'),
+    State('intermed_file', 'data'),
+    State('intermed_slide_file', 'data'),
+    State('sliced_file', 'data'),
+)
+
+def data_slicing(country, pnns1, pnns2,
+                 slide_energy, slide_fat, slide_sat_fat, slide_carbs, 
+                 slide_fiber, slide_prot, slide_salt, slide_macro,
+                 df_origin, df_intermediaire, df_inter_slide, df_slice):
+
+    sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
+    
+    # Initial call
+    if df_origin is None:
+        df_origin = data.to_json(orient='split')
+    
+    # We do soething only if a country has been selected
+    if country == None :
+    
+        return dash.no_update, None, None, None
+
+    else :
+        # Filtering based on country
+        if ctx.triggered_id == "dropdown_country" or ctx.triggered_id is None:
+            df_intermediaire = pd.read_json(StringIO(df_origin), orient='split')
+            df_intermediaire = df_intermediaire[df_intermediaire.countries_en.str.contains(country)]
+
+            df_inter_slide = copy.copy(df_intermediaire)
+            
+            # Verification of pnns conformity
+            if pnns1 != None :
+                df_inter_slide = df_inter_slide[df_inter_slide.pnns_groups_1 == pnns1]
+            if pnns2 != None : 
+                df_inter_slide = df_inter_slide[df_inter_slide.pnns_groups_2 == pnns2]
+
+            df_slice = copy.copy(df_inter_slide)
+
+            df_intermediaire = df_intermediaire.to_json(orient='split')
+            df_inter_slide = df_inter_slide.to_json(orient='split')
+
+            
+        # Filtering based on pnns1
+        if ctx.triggered_id in ["dropdown_pnns1"]:
+            df_inter_slide = pd.read_json(StringIO(df_intermediaire), orient='split')
+            # Verification of pnns conformity
+            if pnns1 != None:
+                df_inter_slide = df_inter_slide[df_inter_slide.pnns_groups_1 == pnns1]
+                
+            df_intermediaire, df_origin = dash.no_update, dash.no_update
+            df_slice = copy.copy(df_inter_slide)
+            df_inter_slide = df_inter_slide.to_json(orient='split')
+
+        # Filtering based on pnns2
+        if ctx.triggered_id in ["dropdown_pnns2"]:
+            df_inter_slide = pd.read_json(StringIO(df_intermediaire), orient='split')
+            # Verification of pnns conformity
+            if (pnns1 != None) & (pnns2 != None):
+                df_inter_slide = df_inter_slide[(df_inter_slide.pnns_groups_1 == pnns1) &
+                                                (df_inter_slide.pnns_groups_2 == pnns2)]
+                
+            df_intermediaire, df_origin = dash.no_update, dash.no_update
+            df_slice = copy.copy(df_inter_slide)
+            df_inter_slide = df_inter_slide.to_json(orient='split')
+
+        # Filtering based on slide
+        if ctx.triggered_id in slider_trigger:
+
+            df_slice = pd.read_json(StringIO(df_inter_slide), orient='split')
+            
+            df_intermediaire, df_origin, df_inter_slide = dash.no_update, dash.no_update, dash.no_update
+
+        for nut, slide in zip(["energy_100g"] + nutrients, sliders):
+            df_slice = df_slice[(df_slice[nut] >= slide[0]) & (df_slice[nut] <= slide[1])]
+
+        df_slice = df_slice.to_json(orient='split')
+        
+    return df_origin, df_intermediaire, df_inter_slide, df_slice
 
 
 @app.callback(
-    Output('dropdown_country','options'),
     Output('dropdown_country','value'),
     
     Input('dropdown_country','value'),
@@ -188,14 +366,11 @@ app.layout = html.Div([
 
 # We define the countries list
 def choice_country(country):
-    c1 = [country.split(",") for country in data.countries_en.unique()]
-    c2 = [count for country in c1 for count in country]
-    unique_countries = sorted(list(set(c2)))
     
     if country == []:
         country = None
         
-    return unique_countries, country
+    return country
     
 @app.callback(
     Output('dropdown_pnns1','options'),
@@ -205,21 +380,52 @@ def choice_country(country):
     
     Input('dropdown_pnns1','value'),
     Input('dropdown_pnns2','value'),
+    Input('dropdown_country','value'),
+    
+    State('dropdown_pnns1','options'),
+    State('dropdown_pnns2','options'),
 )
 
 # We define the pnns_groups
-def choice_pnns_groups(pnns1, pnns2):
-    pnns_groups_1 = data.pnns_groups_1.unique()
+def choice_pnns_groups(pnns1, pnns2, country, pnns_groups_1, pnns_groups_2):
     
-    # Depending of pnns_groups_1 value
-    if pnns1 != None :
-        pnns_groups_2 = data.loc[data.pnns_groups_1 == pnns1, "pnns_groups_2"].unique()
-        # Reset dropdown 
-        if ctx.triggered_id == "dropdown_pnns1":
-            pnns2 = None
-    else : 
-        pnns_groups_2 = []
+    # Modifying only if necessary
+    if ctx.triggered_id == "dropdown_country":
+        if country is None:
+            
+            pnns_groups_1, pnns_groups_2 = [], []
+            pnns1, pnns2 = None, None
+            
+        else :
+            pnns_groups_1 = pnns_groups_options(data, country, "pnns_groups_1")
+
+            # Depending of pnns_groups_1 value
+            if pnns1 != None:
+                pnns_groups_2 = pnns_groups_options(data, country, "pnns_groups_2", pnns1)
+
+                # Reset dropdown 
+                if ctx.triggered_id == "dropdown_pnns1":
+                    pnns2 = None
+            else : 
+                pnns_groups_2 = []
+            
+    # Reset dropdown pnns_groups_2 because they are not the same groups
+    elif ctx.triggered_id == "dropdown_pnns1":
         
+        pnns2 = None
+        
+        if pnns1 != None:
+            pnns_groups_1 = dash.no_update
+            pnns_groups_2 = pnns_groups_options(data, country, "pnns_groups_2", pnns1)
+            
+        else :
+            pnns_groups_2 = []
+        
+    else:  
+        pnns_groups_1 = dash.no_update
+        pnns_groups_2 = dash.no_update
+    
+    # We verify the pnns1 and pnns2 values
     if pnns1 == []:
         pnns1 = None
     if pnns2 == []:
@@ -227,173 +433,165 @@ def choice_pnns_groups(pnns1, pnns2):
         
     return pnns_groups_1, pnns_groups_2, pnns1, pnns2
 
-@app.callback(
-    Output('slider_energy', 'value'),
-    Output('slider_fat', 'value'),
-    Output('slider_saturated', 'value'),
-    Output('slider_carbohydrates', 'value'),
-    Output('slider_fiber', 'value'),
-    Output('slider_proteins', 'value'),
-    Output('slider_salt', 'value'),
-    Output('slider_macronutrients', 'value'),
     
+@app.callback(
+    *[Output(f'{slide}', 'min') for slide in slider_trigger],
+    *[Output(f'{slide}', 'max') for slide in slider_trigger],
+    *[Output(f'{slide}', 'marks') for slide in slider_trigger],
+    *[Output(f'{slide}', 'value') for slide in slider_trigger],
+    Input('intermed_slide_file', 'data'),
     Input('reset_sliders_button', 'n_clicks'),
+    prevent_initial_call=True,
+)
+def update_sliders(df_inter_slide, n_clicks):
+            
+    # If we change the data
+    if (df_inter_slide != None) & (ctx.triggered_id == "intermed_slide_file" or 
+                                   ctx.triggered_id == "reset_sliders_button"):
+
+        df_inter_slide = pd.read_json(StringIO(df_inter_slide), orient='split')
+        output_values = []
+        
+        # Rounding down
+        for nutrient in ["energy_100g"] + nutrients:
+            nutrient_min = math.floor(df_inter_slide[f'{nutrient}'].min())
+            output_values.extend([nutrient_min])
+        # Rounding up
+        for nutrient in ["energy_100g"] + nutrients:
+            nutrient_max = math.ceil(df_inter_slide[f'{nutrient}'].max())
+            output_values.extend([nutrient_max])
+        for nutrient in ["energy_100g"] + nutrients:
+            nutrient_min = math.floor(df_inter_slide[f'{nutrient}'].min())
+            nutrient_max = math.ceil(df_inter_slide[f'{nutrient}'].max())
+            nutrient_marks = {nutrient_min: str(nutrient_min), nutrient_max: str(nutrient_max)}
+            output_values.extend([nutrient_marks])
+        for nutrient in ["energy_100g"] + nutrients:
+            nutrient_min = math.floor(df_inter_slide[f'{nutrient}'].min())
+            nutrient_max = math.ceil(df_inter_slide[f'{nutrient}'].max())
+            output_values.append([nutrient_min, nutrient_max])
+
+        return tuple(output_values)
+
+    return dash.no_update
+
+@app.callback(
+    Output('search_bar', 'options'),
+    
+    Input('intermed_slide_file', 'data'),
+    prevent_initial_call=True,
 )
 
-def reset_sliders_button(button_reset):
-    return [0, 3880], [0, 100], [0, 100], [0, 100], [0, 100], [0, 100], [0, 100], [0, 100]
+def search_bar_options(df_inter_slide):
+    if df_inter_slide is not None :
+        df_inter_slide = pd.read_json(StringIO(df_inter_slide), orient='split')
+
+        search_bar_options = df_inter_slide.product_name.sort_values().unique()
+
+        return search_bar_options
+    
+    else :
+        return dash.no_update
 
 @app.callback(
     Output('table_products', 'data'),
+    Output('table_products', 'style_data_conditional'),
     
-    Input('dropdown_pnns1', 'value'),
-    Input('dropdown_pnns2', 'value'),
-    Input('dropdown_country','value'),
-    Input('slider_energy', 'value'),
-    Input('slider_fat', 'value'),
-    Input('slider_saturated', 'value'),
-    Input('slider_carbohydrates', 'value'),
-    Input('slider_fiber', 'value'),
-    Input('slider_proteins', 'value'),
-    Input('slider_salt', 'value'),
-    Input('slider_macronutrients', 'value'),
     Input('table_products', "sort_by"),
+    Input('sliced_file', 'data'),
+    Input('search_bar', 'value'),
+    
+    State('intermed_slide_file', 'data')
 )
 
-def table_showing(pnns1, pnns2, country, 
-                         slide_energy, slide_fat, slide_sat_fat, slide_carbs, 
-                         slide_fiber, slide_prot, slide_salt, slide_macro,
-                         sort_by):
+def table_showing(sort_by, df_slice, search_bar_values, df_inter_slide):
+        
+    if df_slice != None :
+        df_slice = pd.read_json(StringIO(df_slice), orient='split')
 
-    sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
+        # If we sort the table, we want the 20 best 
+        if len(sort_by):
+            df_slice.sort_values(
+                [col['column_id'] for col in sort_by],
+                ascending=[
+                    col['direction'] == 'asc'
+                    for col in sort_by
+                ],
+                inplace=True)
+        
+        
+        # We show selected products
+        if search_bar_values != None:
+            df_inter_slide = pd.read_json(StringIO(df_inter_slide), orient='split')
+            # We search for the selected products 
+            df_inter_slide = df_inter_slide.loc[df_inter_slide.product_name.isin(search_bar_values)]
+            
+            # We don't show 2 times the same items
+            df_slice = df_slice.loc[~df_slice.product_name.isin(search_bar_values)]
+            
+            # We concat the 20 best total (We retracte to 20 th number selected)
+            if len(df_inter_slide) < 21 :
+                concat_df = pd.concat([df_inter_slide, df_slice[:20 - len(df_inter_slide)]])
+            else :
+                concat_df = df_inter_slide
 
-    df = copy.copy(data)
-    df = df.loc[(df.countries_en.str.contains(country))
-                  &(df.pnns_groups_1==pnns1)]
-    if pnns2 != None :
-        df = df.loc[df.pnns_groups_2==pnns2]
+            concat_df.sort_values(
+                [col['column_id'] for col in sort_by],
+                ascending=[
+                    col['direction'] == 'asc'
+                    for col in sort_by
+                ],
+                inplace=True)
+            
+            # We gather the index 
+            concat_df.reset_index(inplace=True, drop=True)
+            concat_index = concat_df[concat_df['product_name'].isin(search_bar_values)].index.tolist()
+
+            #concat_df['sorting_column'] = np.where(concat_df.product_name.isin(search_bar_values), 0, -1)
+            #concat_df.sort_values(
+            #    by=['sorting_column'] + [col['column_id'] for col in sort_by],
+            #    ascending=[True] + [col['direction'] == 'asc' for col in sort_by],
+            #    inplace=True
+            #)
+            #rows_to_style = df_slice[condition].index.tolist()
+            style_data_conditional = []
+            for row in concat_index:
+                #color = "green" if row >= len(df_slice[:20 - len(df_inter_slide)]) else "tomato"
+                #print(color, row, len(df_slice[:20 - len(df_inter_slide)])
+                style_data_conditional.append({
+                    'if': {'row_index': row},
+                    'backgroundColor': "tomato" if row >= len(df_slice[:20 - len(df_inter_slide)]) else "green",
+                    'color': 'white'
+                })
+        #df_slice.loc[df_slice['condition_to_exclude'], 'sorting_column'] = -1
+            return concat_df.to_dict('records'), style_data_conditional
+        
+        else :
+            return df_slice[:20].to_dict('records'), []
     
-    # If we modify one of the slider
-    if ctx.triggered_id in ['slider_energy', 'slider_fat', 'slider_saturated', 'slider_carbohydrates', 
-                            'slider_fiber', 'slider_proteins', 'slider_salt', 'slider_macronutrients']:
-    
-        for nut, slide in zip(["energy_100g"]+nutrients, sliders):
-            df = df.loc[(df[nut] >= slide[0]) & (df[nut] <= slide[1])]
-    if len(sort_by):
-        df.sort_values(
-            [col['column_id'] for col in sort_by],
-            ascending=[
-                col['direction'] == 'asc'
-                for col in sort_by
-            ],
-            inplace=True
-        )
-
-    return df.iloc[:20, :].to_dict('records')
+    # If no country selected, no data to show
+    else : 
+        return None, []
 
 @app.callback(
     Output('graph_macronutrients', 'figure'),
     
-    Input('dropdown_pnns1', 'value'),
-    Input('dropdown_pnns2', 'value'),
-    Input('dropdown_country','value'),
     Input('dropdown_nutrients', 'value'),
-    Input('slider_energy', 'value'),
-    Input('slider_fat', 'value'),
-    Input('slider_saturated', 'value'),
-    Input('slider_carbohydrates', 'value'),
-    Input('slider_fiber', 'value'),
-    Input('slider_proteins', 'value'),
-    Input('slider_salt', 'value'),
-    Input('slider_macronutrients', 'value'),
     Input('check_list_graph', 'value'),
+    Input('sliced_file', 'data'),
 )
 
-# We produce the main graphic deepending of several input
-def graph_macronutrients(pnns1, pnns2, country, nutrients_choice, 
-                         slide_energy, slide_fat, slide_sat_fat, slide_carbs, 
-                         slide_fiber, slide_prot, slide_salt, slide_macro,
-                         ch_list_graph
-                        ):    
-   
-    sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
-    mask = copy.copy(data)
+# We produce the main graphic depending of several input
+def graph_macronutrients(nutrients_choice, ch_list_graph, df_slice):
     
-    # To have Energy and the nutrients on the same graph
-    figure_nutrients = make_subplots(specs=[[{"secondary_y": True}]])
-    
-    # Sliders controlers
-    for nut, slide in zip(["energy_100g"]+nutrients, sliders):
-        mask = mask.loc[(mask[nut] >= slide[0]) & (mask[nut] <= slide[1])]
-
-    if nutrients_choice == []:
-        nutrients_choice = None
-    
-    # No Figure
-    if len(ch_list_graph) == 0 or country == None:
-        return px.box()
-    
-    if country != None :
-        mask = mask.loc[mask.countries_en.str.contains(country)]
-        if pnns1 != None:
-            if pnns2 != None:
-                mask = mask.loc[(mask.pnns_groups_1 == pnns1) & (mask.pnns_groups_2 == pnns2)]
-            else :
-                mask = mask.loc[mask.pnns_groups_1 == pnns1]
-        if len(ch_list_graph) == 1:
-            if "Distribution" in ch_list_graph :
-                figure_nutrients1 = px.box(mask, y="energy_100g", hover_data=["product_name"]) 
-                #figure_nutrients2 = px.box()
-                #for nut in nutrients:
-                 #   figure_nutrients2.add_traces(px.box(mask, y=nut).data[0])
-                figure_nutrients2 = px.box(mask, y=nutrients_choice, hover_data=["product_name"]) if nutrients_choice != None else px.box(mask, y=nutrients, hover_data=["product_name"])
-
-            elif "Products" in ch_list_graph :
-                figure_nutrients1 = px.strip(mask, y="energy_100g", hover_data=["product_name"]) 
-                figure_nutrients2 = px.strip(mask, y=nutrients_choice, hover_data=["product_name"]) if nutrients_choice != None else px.strip(mask, y=nutrients, hover_data=["product_name"])                
-                
-        elif len(ch_list_graph) == 2:
-            
-            figure_nutrients1 = px.box(mask, y="energy_100g", hover_data=["product_name"])
-            figure_nutrients1.add_trace(px.strip(mask, y="energy_100g", hover_data=["product_name"]).data[0])
-            figure_nutrients1.update_traces(offsetgroup=0.5)
-            
-            figure_nutrients2 = px.box(mask, 
-                                       y=nutrients_choice, 
-                                       hover_data=["product_name"], 
-                                       points = False) if nutrients_choice != None else px.box(mask, 
-                                                          y=nutrients, 
-                                                          hover_data=["product_name"], 
-                                                          points = False
-                                        )
-            figure_nutrients2.add_trace(px.strip(mask, 
-                                                 y=nutrients_choice, 
-                                                 hover_data=["product_name"]
-                                        ).data[0] if nutrients_choice != None else px.strip(mask, 
-                                                    y=nutrients, 
-                                                    hover_data=["product_name"]).data[0])
-            figure_nutrients2.update_traces(offsetgroup=0.5)
-            
-        figure_nutrients1.update_traces(marker = dict(color = "red"))
-        figure_nutrients2.update_traces(marker = dict(color = "green"))
+    if df_slice != None :
         
-        for i in range(len(figure_nutrients1.data)):
-            figure_nutrients.add_trace(figure_nutrients1.data[i], secondary_y=False)
-            figure_nutrients.add_trace(figure_nutrients2.data[i], secondary_y=True)
-            
-        # Update of figure layout
-        figure_nutrients.update_layout(
-            yaxis_title="g/100g",
-            title=dict(text="Distribution of macronutrients of selected products",
-                       font=dict(size=24, color="black"), x=0.5, xanchor='center'),
-            font=dict(size=18, color="black")
-        )
-        # Set y-axes titles
-        figure_nutrients.update_yaxes(title_text="g/100g (energy)", secondary_y=False)
-        figure_nutrients.update_yaxes(title_text="g/100g (nutrients)", secondary_y=True)
-     
-
-    return figure_nutrients
+        df_slice = pd.read_json(StringIO(df_slice), orient='split')
+    
+        return fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) 
+    
+    # If no country selected, no data to show
+    else :
+        return px.strip()
     
 # Run the app
 if __name__ == '__main__':
