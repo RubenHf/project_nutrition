@@ -137,7 +137,7 @@ server = app.server
 
 app.title = 'Nutrition app'
 
-versionning = "version: 0.0.2"
+versionning = "version: 0.2.1"
 
 products_availability = "Referenced products: " + str(data.shape[0])
 
@@ -290,7 +290,7 @@ def data_slicing(country, pnns1, pnns2,
                  df_origin, df_intermediaire, df_inter_slide, df_slice):
 
     sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
-    
+    elapsed_time = time.time()
     # Initial call
     if df_origin is None:
         df_origin = data.to_json(orient='split')
@@ -338,6 +338,8 @@ def data_slicing(country, pnns1, pnns2,
             if (pnns1 != None) & (pnns2 != None):
                 df_inter_slide = df_inter_slide[(df_inter_slide.pnns_groups_1 == pnns1) &
                                                 (df_inter_slide.pnns_groups_2 == pnns2)]
+            else :
+                df_inter_slide = df_inter_slide[(df_inter_slide.pnns_groups_1 == pnns1)]
                 
             df_intermediaire, df_origin = dash.no_update, dash.no_update
             df_slice = copy.copy(df_inter_slide)
@@ -350,11 +352,16 @@ def data_slicing(country, pnns1, pnns2,
             
             df_intermediaire, df_origin, df_inter_slide = dash.no_update, dash.no_update, dash.no_update
 
-        for nut, slide in zip(["energy_100g"] + nutrients, sliders):
-            df_slice = df_slice[(df_slice[nut] >= slide[0]) & (df_slice[nut] <= slide[1])]
+        for nutrient, slide in zip(["energy_100g"] + nutrients, sliders):
+            if ctx.triggered_id not in slider_trigger:
+                nutrient_min = math.floor(df_slice[f'{nutrient}'].min())
+                nutrient_max = math.ceil(df_slice[f'{nutrient}'].max())
+                df_slice = df_slice[(df_slice[nutrient] >= nutrient_min) & (df_slice[nutrient] <= nutrient_max)]
+            elif ctx.triggered_id in slider_trigger:
+                df_slice = df_slice[(df_slice[nutrient] >= slide[0]) & (df_slice[nutrient] <= slide[1])]
 
         df_slice = df_slice.to_json(orient='split')
-        
+    print("Data slicing", time.time() - elapsed_time)    
     return df_origin, df_intermediaire, df_inter_slide, df_slice
 
 
@@ -388,7 +395,6 @@ def choice_country(country):
 
 # We define the pnns_groups
 def choice_pnns_groups(pnns1, pnns2, country, pnns_groups_1, pnns_groups_2):
-    
     # Modifying only if necessary
     if ctx.triggered_id == "dropdown_country":
         if country is None:
@@ -435,15 +441,17 @@ def choice_pnns_groups(pnns1, pnns2, country, pnns_groups_1, pnns_groups_2):
 
     
 @app.callback(
-    *[Output(f'{slide}', 'min') for slide in slider_trigger],
-    *[Output(f'{slide}', 'max') for slide in slider_trigger],
-    *[Output(f'{slide}', 'marks') for slide in slider_trigger],
-    *[Output(f'{slide}', 'value') for slide in slider_trigger],
+    *[
+    Output(f"{slide}", property)
+    for slide in slider_trigger
+    for property in ['min', 'max', 'marks', 'value']
+    ],
     Input('intermed_slide_file', 'data'),
     Input('reset_sliders_button', 'n_clicks'),
     prevent_initial_call=True,
 )
 def update_sliders(df_inter_slide, n_clicks):
+    elapsed_time = time.time()
             
     # If we change the data
     if (df_inter_slide != None) & (ctx.triggered_id == "intermed_slide_file" or 
@@ -455,20 +463,11 @@ def update_sliders(df_inter_slide, n_clicks):
         # Rounding down
         for nutrient in ["energy_100g"] + nutrients:
             nutrient_min = math.floor(df_inter_slide[f'{nutrient}'].min())
-            output_values.extend([nutrient_min])
-        # Rounding up
-        for nutrient in ["energy_100g"] + nutrients:
-            nutrient_max = math.ceil(df_inter_slide[f'{nutrient}'].max())
-            output_values.extend([nutrient_max])
-        for nutrient in ["energy_100g"] + nutrients:
-            nutrient_min = math.floor(df_inter_slide[f'{nutrient}'].min())
             nutrient_max = math.ceil(df_inter_slide[f'{nutrient}'].max())
             nutrient_marks = {nutrient_min: str(nutrient_min), nutrient_max: str(nutrient_max)}
-            output_values.extend([nutrient_marks])
-        for nutrient in ["energy_100g"] + nutrients:
-            nutrient_min = math.floor(df_inter_slide[f'{nutrient}'].min())
-            nutrient_max = math.ceil(df_inter_slide[f'{nutrient}'].max())
-            output_values.append([nutrient_min, nutrient_max])
+            output_values.extend([nutrient_min, nutrient_max, nutrient_marks, [math.floor(nutrient_min), math.ceil(nutrient_max)]])
+            
+        print("update_sliders", time.time() - elapsed_time)
 
         return tuple(output_values)
 
@@ -483,10 +482,13 @@ def update_sliders(df_inter_slide, n_clicks):
 
 def search_bar_options(df_inter_slide):
     if df_inter_slide is not None :
+        
+        elapsed_time = time.time()
         df_inter_slide = pd.read_json(StringIO(df_inter_slide), orient='split')
-
+        
+        # Extract the "product_name" values, get unique sorted values and sort them
         search_bar_options = df_inter_slide.product_name.sort_values().unique()
-
+        print("search_bar_options : ", time.time() - elapsed_time)
         return search_bar_options
     
     else :
@@ -504,6 +506,7 @@ def search_bar_options(df_inter_slide):
 )
 
 def table_showing(sort_by, df_slice, search_bar_values, df_inter_slide):
+    elapsed_time = time.time()
         
     if df_slice != None :
         df_slice = pd.read_json(StringIO(df_slice), orient='split')
@@ -516,8 +519,7 @@ def table_showing(sort_by, df_slice, search_bar_values, df_inter_slide):
                     col['direction'] == 'asc'
                     for col in sort_by
                 ],
-                inplace=True)
-        
+                inplace=True)        
         
         # We show selected products
         if search_bar_values != None:
@@ -546,23 +548,15 @@ def table_showing(sort_by, df_slice, search_bar_values, df_inter_slide):
             concat_df.reset_index(inplace=True, drop=True)
             concat_index = concat_df[concat_df['product_name'].isin(search_bar_values)].index.tolist()
 
-            #concat_df['sorting_column'] = np.where(concat_df.product_name.isin(search_bar_values), 0, -1)
-            #concat_df.sort_values(
-            #    by=['sorting_column'] + [col['column_id'] for col in sort_by],
-            #    ascending=[True] + [col['direction'] == 'asc' for col in sort_by],
-            #    inplace=True
-            #)
-            #rows_to_style = df_slice[condition].index.tolist()
             style_data_conditional = []
             for row in concat_index:
-                #color = "green" if row >= len(df_slice[:20 - len(df_inter_slide)]) else "tomato"
-                #print(color, row, len(df_slice[:20 - len(df_inter_slide)])
                 style_data_conditional.append({
                     'if': {'row_index': row},
                     'backgroundColor': "tomato" if row >= len(df_slice[:20 - len(df_inter_slide)]) else "green",
                     'color': 'white'
                 })
-        #df_slice.loc[df_slice['condition_to_exclude'], 'sorting_column'] = -1
+            print("table_showing", time.time() - elapsed_time)
+        
             return concat_df.to_dict('records'), style_data_conditional
         
         else :
@@ -582,11 +576,12 @@ def table_showing(sort_by, df_slice, search_bar_values, df_inter_slide):
 
 # We produce the main graphic depending of several input
 def graph_macronutrients(nutrients_choice, ch_list_graph, df_slice):
-    
+    elapsed_time = time.time()
     if df_slice != None :
         
         df_slice = pd.read_json(StringIO(df_slice), orient='split')
-    
+        
+        print("graph_macronutrients", time.time() - elapsed_time)
         return fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) 
     
     # If no country selected, no data to show

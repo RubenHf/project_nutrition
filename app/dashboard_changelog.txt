@@ -1,3 +1,6 @@
+Version 0.2.1
+Correction and increasing the slider function
+Changing pnns_groups_2 was affected by the ancient value
 Version 0.2.0
 Addition number of products in each categories (country, pnns_groups_1, pnns_groups_2)
 Better caching of datas
