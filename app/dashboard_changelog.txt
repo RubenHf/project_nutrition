@@ -1,3 +1,5 @@
+Version 0.4.1
+energy_100g was not showing before on the graph
 Version 0.4.0
 Addition of 3x more products 
 Only countries with more than 10000 products are present

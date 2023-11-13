@@ -122,6 +122,8 @@ def fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) :
     # Set y-axes titles
     figure_nutrients.update_yaxes(title_text="g/100g (energy)", secondary_y=False)
     figure_nutrients.update_yaxes(title_text="g/100g (nutrients)", secondary_y=True) 
+    # Set x-axe ticks
+    figure_nutrients.update_xaxes(ticktext=["energy_100g"] + nutrients, tickvals=[i for i in range(len(nutrients) + 1)])
                                   #range = [0, 100], tickmode="sync")
                                   
     
@@ -136,7 +138,7 @@ server = app.server
 
 app.title = 'Nutrition app'
 
-versionning = "version: 0.4.0"
+versionning = "version: 0.4.1"
 
 products_availability = "Referenced products: " + str(data.shape[0])
 
