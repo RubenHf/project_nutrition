@@ -1,3 +1,6 @@
+Version 0.3.0
+Addition of Patch() for controling graphical output, less ressources needed for output the graph
+Correction when changing country with pnns chosen but no products were in the list to begin with.
 Version 0.2.1
 Correction and increasing the slider function
 Changing pnns_groups_2 was affected by the ancient value

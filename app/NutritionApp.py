@@ -137,7 +137,7 @@ server = app.server
 
 app.title = 'Nutrition app'
 
-versionning = "version: 0.2.1"
+versionning = "version: 0.3.0"
 
 products_availability = "Referenced products: " + str(data.shape[0])
 
@@ -160,7 +160,6 @@ unique_countries = [
     } 
     for country in unique_countries[1:]
 ]
-
 
 app.layout = html.Div([
     
@@ -361,7 +360,6 @@ def data_slicing(country, pnns1, pnns2,
                 df_slice = df_slice[(df_slice[nutrient] >= slide[0]) & (df_slice[nutrient] <= slide[1])]
 
         df_slice = df_slice.to_json(orient='split')
-
     return df_origin, df_intermediaire, df_inter_slide, df_slice
 
 
@@ -465,7 +463,6 @@ def update_sliders(df_inter_slide, n_clicks):
             nutrient_max = math.ceil(df_inter_slide[f'{nutrient}'].max())
             nutrient_marks = {nutrient_min: str(nutrient_min), nutrient_max: str(nutrient_max)}
             output_values.extend([nutrient_min, nutrient_max, nutrient_marks, [math.floor(nutrient_min), math.ceil(nutrient_max)]])
-            
 
         return tuple(output_values)
 
@@ -481,10 +478,12 @@ def update_sliders(df_inter_slide, n_clicks):
 def search_bar_options(df_inter_slide):
     if df_inter_slide is not None :
         
+        elapsed_time = time.time()
         df_inter_slide = pd.read_json(StringIO(df_inter_slide), orient='split')
         
         # Extract the "product_name" values, get unique sorted values and sort them
         search_bar_options = df_inter_slide.product_name.sort_values().unique()
+        print("search_bar_options : ", time.time() - elapsed_time)
         return search_bar_options
     
     else :
@@ -566,15 +565,42 @@ def table_showing(sort_by, df_slice, search_bar_values, df_inter_slide):
     Input('dropdown_nutrients', 'value'),
     Input('check_list_graph', 'value'),
     Input('sliced_file', 'data'),
+    *[Input(f'{slide}', 'value') for slide in slider_trigger],
 )
-
+    
 # We produce the main graphic depending of several input
-def graph_macronutrients(nutrients_choice, ch_list_graph, df_slice):
-    if df_slice != None :
+def graph_macronutrients(nutrients_choice, ch_list_graph, df_slice,
+                        slide_energy, slide_fat, slide_sat_fat, slide_carbs, 
+                         slide_fiber, slide_prot, slide_salt, slide_macro):
+    
+    sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
+    
+    if (df_slice != None) & (df_slice.shape[0] > 1) :
+        if ctx.triggered_id in ["sliced_file", "dropdown_nutrients", "check_list_graph"]:
         
-        df_slice = pd.read_json(StringIO(df_slice), orient='split')
+            df_slice = pd.read_json(StringIO(df_slice), orient='split')
+            
+            return fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) 
         
-        return fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) 
+        elif ctx.triggered_id in slider_trigger:
+            df_slice = pd.read_json(StringIO(df_slice), orient='split')
+            patched_figure = Patch()
+            
+            if nutrients_choice is not None:
+                nutrients_list = nutrients_choice
+            else:
+                nutrients_list = nutrients
+            
+            product_name_list = [[value] for value in df_slice["product_name"].values]
+
+            patched_figure['data'][0]['customdata'] = product_name_list
+            patched_figure['data'][1]['customdata'] = product_name_list * len(nutrients_list)
+
+            patched_figure['data'][0]['y'] = [value for value in df_slice["energy_100g"].values]
+            patched_figure['data'][1]['x'] = [nut for nut in nutrients_list for value in df_slice[nut].values]
+            patched_figure['data'][1]['y'] = [value for nut in nutrients_list for value in df_slice[nut].values]
+            
+            return patched_figure
     
     # If no country selected, no data to show
     else :
