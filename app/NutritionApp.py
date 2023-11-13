@@ -578,13 +578,10 @@ def graph_macronutrients(nutrients_choice, ch_list_graph, df_slice,
         # Verification that
         if df_slice.shape[0] > 1 :
             if ctx.triggered_id in ["sliced_file", "dropdown_nutrients", "check_list_graph"]:
-        
-                df_slice = pd.read_json(StringIO(df_slice), orient='split')
             
                 return fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) 
         
             elif ctx.triggered_id in slider_trigger:
-                df_slice = pd.read_json(StringIO(df_slice), orient='split')
                 patched_figure = Patch()
             
                 if nutrients_choice is not None:
