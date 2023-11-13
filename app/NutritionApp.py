@@ -478,12 +478,10 @@ def update_sliders(df_inter_slide, n_clicks):
 def search_bar_options(df_inter_slide):
     if df_inter_slide is not None :
         
-        elapsed_time = time.time()
         df_inter_slide = pd.read_json(StringIO(df_inter_slide), orient='split')
         
         # Extract the "product_name" values, get unique sorted values and sort them
         search_bar_options = df_inter_slide.product_name.sort_values().unique()
-        print("search_bar_options : ", time.time() - elapsed_time)
         return search_bar_options
     
     else :
@@ -575,32 +573,37 @@ def graph_macronutrients(nutrients_choice, ch_list_graph, df_slice,
     
     sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
     
-    if (df_slice != None) & (df_slice.shape[0] > 1) :
-        if ctx.triggered_id in ["sliced_file", "dropdown_nutrients", "check_list_graph"]:
+    if df_slice != None :
+        df_slice = pd.read_json(StringIO(df_slice), orient='split')
+        # Verification that
+        if df_slice.shape[0] > 1 :
+            if ctx.triggered_id in ["sliced_file", "dropdown_nutrients", "check_list_graph"]:
         
-            df_slice = pd.read_json(StringIO(df_slice), orient='split')
+                df_slice = pd.read_json(StringIO(df_slice), orient='split')
             
-            return fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) 
+                return fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) 
         
-        elif ctx.triggered_id in slider_trigger:
-            df_slice = pd.read_json(StringIO(df_slice), orient='split')
-            patched_figure = Patch()
+            elif ctx.triggered_id in slider_trigger:
+                df_slice = pd.read_json(StringIO(df_slice), orient='split')
+                patched_figure = Patch()
             
-            if nutrients_choice is not None:
-                nutrients_list = nutrients_choice
-            else:
-                nutrients_list = nutrients
+                if nutrients_choice is not None:
+                    nutrients_list = nutrients_choice
+                else:
+                    nutrients_list = nutrients
             
-            product_name_list = [[value] for value in df_slice["product_name"].values]
+                product_name_list = [[value] for value in df_slice["product_name"].values]
 
-            patched_figure['data'][0]['customdata'] = product_name_list
-            patched_figure['data'][1]['customdata'] = product_name_list * len(nutrients_list)
+                patched_figure['data'][0]['customdata'] = product_name_list
+                patched_figure['data'][1]['customdata'] = product_name_list * len(nutrients_list)
 
-            patched_figure['data'][0]['y'] = [value for value in df_slice["energy_100g"].values]
-            patched_figure['data'][1]['x'] = [nut for nut in nutrients_list for value in df_slice[nut].values]
-            patched_figure['data'][1]['y'] = [value for nut in nutrients_list for value in df_slice[nut].values]
+                patched_figure['data'][0]['y'] = [value for value in df_slice["energy_100g"].values]
+                patched_figure['data'][1]['x'] = [nut for nut in nutrients_list for value in df_slice[nut].values]
+                patched_figure['data'][1]['y'] = [value for nut in nutrients_list for value in df_slice[nut].values]
             
-            return patched_figure
+                return patched_figure
+            else :
+              return px.strip()
     
     # If no country selected, no data to show
     else :
