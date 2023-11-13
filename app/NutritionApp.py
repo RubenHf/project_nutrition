@@ -576,7 +576,7 @@ def graph_macronutrients(nutrients_choice, ch_list_graph, df_slice,
     if df_slice != None :
         df_slice = pd.read_json(StringIO(df_slice), orient='split')
         # Verification that
-        if df_slice.shape[0] > 1 :
+        if df_slice.shape[0] > 0 :
             if ctx.triggered_id in ["sliced_file", "dropdown_nutrients", "check_list_graph"]:
             
                 return fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) 
@@ -599,12 +599,10 @@ def graph_macronutrients(nutrients_choice, ch_list_graph, df_slice,
                 patched_figure['data'][1]['y'] = [value for nut in nutrients_list for value in df_slice[nut].values]
             
                 return patched_figure
-            else :
-              return px.strip()
     
     # If no country selected, no data to show
-    else :
-        return px.strip()
+
+    return px.strip()
     
 # Run the app
 if __name__ == '__main__':
