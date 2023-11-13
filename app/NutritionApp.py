@@ -17,7 +17,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 app_dir = os.path.dirname(script_dir)
 
 # Define the path to the file in the /files directory
-file_path = os.path.join(app_dir, 'files', 'donnees_nettoyees.csv')
+file_path = os.path.join(app_dir, 'files', 'cleaned_data.csv')
 
 # Now you can use the file_path to access your file
 with open(file_path, 'r') as file:
@@ -76,9 +76,6 @@ def fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) :
     elif len(ch_list_graph) == 1:
         if "Distribution" in ch_list_graph :
             figure_nutrients1 = px.box(df_slice, y="energy_100g", hover_data=["product_name"]) 
-            #figure_nutrients2 = px.box()
-            #for nut in nutrients:
-             #   figure_nutrients2.add_traces(px.box(mask, y=nut).data[0])
             figure_nutrients2 = px.box(df_slice, y=nutrients_choice, hover_data=["product_name"]) if nutrients_choice != None else px.box(df_slice, y=nutrients, hover_data=["product_name"])
 
         elif "Products" in ch_list_graph :
@@ -117,14 +114,16 @@ def fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) :
     # Update of figure layout
     figure_nutrients.update_layout(
         yaxis_title="g/100g",
-        title=dict(text="Distribution of macronutrients of selected products",
+        title=dict(text=f'Distribution of macronutrients of selected products [{df_slice.shape[0]}]',
                    font=dict(size=24, color="black"), x=0.5, xanchor='center'),
         font=dict(size=18, color="black"),
     )
 
     # Set y-axes titles
     figure_nutrients.update_yaxes(title_text="g/100g (energy)", secondary_y=False)
-    figure_nutrients.update_yaxes(title_text="g/100g (nutrients)", secondary_y=True)
+    figure_nutrients.update_yaxes(title_text="g/100g (nutrients)", secondary_y=True) 
+                                  #range = [0, 100], tickmode="sync")
+                                  
     
     return figure_nutrients
 
@@ -137,11 +136,11 @@ server = app.server
 
 app.title = 'Nutrition app'
 
-versionning = "version: 0.3.0"
+versionning = "version: 0.4.0"
 
 products_availability = "Referenced products: " + str(data.shape[0])
 
-nutrients = ["fat_100g", "saturated-fat_100g", "carbohydrates_100g", "fiber_100g", "proteins_100g", "salt_100g", "Macronutrients"]
+nutrients = ["fat_100g", "saturated-fat_100g", "carbohydrates_100g", "fiber_100g", "proteins_100g", "salt_100g", "macronutrients_100g"]
 
 slider_trigger = ["slider_energy", "slider_fat", "slider_saturated", "slider_carbohydrates", "slider_fiber", "slider_proteins", "slider_salt", "slider_macronutrients"]
 
@@ -158,7 +157,7 @@ unique_countries = [
         'label': f"{country} [{data[data.countries_en.str.contains(country)].shape[0]} products]",
         'value': country
     } 
-    for country in unique_countries[1:]
+    for country in unique_countries
 ]
 
 app.layout = html.Div([
@@ -289,7 +288,6 @@ def data_slicing(country, pnns1, pnns2,
                  df_origin, df_intermediaire, df_inter_slide, df_slice):
 
     sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
-
     # Initial call
     if df_origin is None:
         df_origin = data.to_json(orient='split')
@@ -359,7 +357,7 @@ def data_slicing(country, pnns1, pnns2,
             elif ctx.triggered_id in slider_trigger:
                 df_slice = df_slice[(df_slice[nutrient] >= slide[0]) & (df_slice[nutrient] <= slide[1])]
 
-        df_slice = df_slice.to_json(orient='split')
+        df_slice = df_slice.to_json(orient='split') 
     return df_origin, df_intermediaire, df_inter_slide, df_slice
 
 
@@ -463,7 +461,7 @@ def update_sliders(df_inter_slide, n_clicks):
             nutrient_max = math.ceil(df_inter_slide[f'{nutrient}'].max())
             nutrient_marks = {nutrient_min: str(nutrient_min), nutrient_max: str(nutrient_max)}
             output_values.extend([nutrient_min, nutrient_max, nutrient_marks, [math.floor(nutrient_min), math.ceil(nutrient_max)]])
-
+       
         return tuple(output_values)
 
     return dash.no_update
@@ -572,11 +570,11 @@ def graph_macronutrients(nutrients_choice, ch_list_graph, df_slice,
                          slide_fiber, slide_prot, slide_salt, slide_macro):
     
     sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
-    
+
     if df_slice != None :
         df_slice = pd.read_json(StringIO(df_slice), orient='split')
         # Verification that
-        if df_slice.shape[0] > 0 :
+        if df_slice.shape[0] > 1 :
             if ctx.triggered_id in ["sliced_file", "dropdown_nutrients", "check_list_graph"]:
             
                 return fig_graph_nutrients(df_slice, nutrients, nutrients_choice, ch_list_graph) 
@@ -597,12 +595,16 @@ def graph_macronutrients(nutrients_choice, ch_list_graph, df_slice,
                 patched_figure['data'][0]['y'] = [value for value in df_slice["energy_100g"].values]
                 patched_figure['data'][1]['x'] = [nut for nut in nutrients_list for value in df_slice[nut].values]
                 patched_figure['data'][1]['y'] = [value for nut in nutrients_list for value in df_slice[nut].values]
-            
+                # Changing the title 
+                patched_figure['layout']['title']['text'] = f'Distribution of macronutrients of selected products [{df_slice.shape[0]}]'
+                
                 return patched_figure
+            else :
+              return px.strip()
     
     # If no country selected, no data to show
-
-    return px.strip()
+    else :
+        return px.strip()
     
 # Run the app
 if __name__ == '__main__':

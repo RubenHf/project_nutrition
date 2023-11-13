@@ -1,3 +1,8 @@
+Version 0.4.0
+Addition of 3x more products 
+Only countries with more than 10000 products are present
+Graphical title: Number of products shown on screen, dynamic with slider.
+Changing of the name Macronutrients to macronutrients_100g
 Version 0.3.0
 Addition of Patch() for controling graphical output, less ressources needed for output the graph
 Correction when changing country with pnns chosen but no products were in the list to begin with.
