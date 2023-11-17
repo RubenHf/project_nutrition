@@ -1,3 +1,25 @@
+Version 0.5.1
+-DashTable: header coloring by sort_by values
+-DashTable: Now the table is in frame with everything, done by changing the styling of the cell
+-Improvement of calculs: products by countries, product by pnns_groups. Calcul structure is now more efficient, we 10 to 100x faster calcul. We could take 10 sec to calculate the number of products for the United States, now it is below the second
+-Caching was added for rendering dataframe. It means, if some groups of products were already search, it will be faster to load. It is on server side, so one person only need to load, for everyone to be have the benefit 
+-Change on how the data was stored and used across the dashboard. Initial thoughts were on using multiple dcc.store to store some slices of data. But it was costing on storage and in speed of transfert data across the dash. Now, we use
+the global data and query it when necessary (caching helping). Overall it improved everything
+-Usage of patching was extend to all figures and configurations. Showing modified figure (slider effect, selected products) is faster by a factor 10 to 100.
+-Correction of overtemplate
+Version 0.5.0
+-Reconstruction of how the products are selected. Products on table can be selected. They are now shown in the search bar and in the graphic. Only one can be shown, even if multiple products with the same name are present
+-When a product is selected in the search bar, they will be all selected and shown on the table and the graphic. They can be unselectionned in the table.
+-DashTable: formating of text
+-DashTable: when a product is selected, the row is highlighted
+-DashTable: when a column is sorted, the column is highlighted
+-Figure: New radarplot added. Median is shown for all data selected. New trace for each products
+-Figure: Color : Red for energy, Green for the other, Blue for selected producted 
+-Figure: Replacing Boxplot by Violinplot
+-Figure: The user choose now which representation to show (Violinplot, Radarplot, Stripplot)
+-Figure: If no data to show, an empty figure is created with "No data shown" wrote on
+-New function: Nutritious plan (sorting), now user can choose different kinds of pre selected sorting options (healthier foods, Low sugar foods, Protein rich foods, Energy rich foods, Low fat foods).
+When the user sort manually the dashtable, a "personnalized plan" is save for the user. When he changes back to a preset plan, he can come back to this one. 
 Version 0.4.1
 energy_100g was not showing before on the graph
 Version 0.4.0
