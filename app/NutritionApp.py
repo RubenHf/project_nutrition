@@ -27,21 +27,29 @@ with open(file_path, 'r') as file:
     data = pd.read_csv(file_path, sep = "\t")
 
 
-def pnns_groups_options(df, country, pnns_groups_num, pnns1 = None):
+def pnns_groups_options(df, country, pnns_groups_num, pnns1=None):
     if pnns_groups_num == "pnns_groups_1":
         pnns_groups = df[pnns_groups_num].unique()
     elif pnns_groups_num == "pnns_groups_2":
         pnns_groups = df.loc[df.pnns_groups_1 == pnns1, pnns_groups_num].unique()
 
-    pnns_groups = [
-    {
-        'label': f"{pnns} [{df[df.countries_en.str.contains(country)&(df[pnns_groups_num] == pnns)].shape[0]} products]",
-        'value': pnns
-    } 
-    for pnns in pnns_groups
+    # Create a DataFrame with counts for each pnns group
+    counts_df = df[df.countries_en.str.contains(country)].groupby(pnns_groups_num).size().reset_index(name='count')
+
+    # Merge the counts with the unique pnns groups
+    merged_df = pd.DataFrame({pnns_groups_num: pnns_groups})
+    merged_df = pd.merge(merged_df, counts_df, on=pnns_groups_num, how='left').fillna(0)
+
+    # Create the pnns_groups_options list
+    pnns_groups_options = [
+        {
+            'label': f"{pnns} [{count} products]",
+            'value': pnns
+        }
+        for pnns, count in zip(merged_df[pnns_groups_num], merged_df['count'])
     ]
 
-    return pnns_groups
+    return pnns_groups_options
 
 # Function to generate a RangeSlider
 def generate_slider(title, id, max_value):
@@ -121,48 +129,52 @@ def figure_radar_plot(df_slice, nutrients, nutrients_choice, df_selected_product
     nb_selected_product = 0
     
     # if product(s) have been selected
-    if (df_selected_products != None):
-        df_selected_products = pd.read_json(StringIO(df_selected_products), orient='split')
-        nb_selected_product = df_selected_products.shape[0]
-        
-        # Differents blue colors
-        blue_colors = [
-            "#0077cc", "#00b8ff", 
-            "#009688", "#35a79c", "#54b2a9", "#65c3ba", "#83d0c9",
-            "#daf8e3", "#97ebdb", "#00c2c7", "#0086ad", "#005582",
-            "#77aaff", "#99ccff", "#bbeeff", "#5588ff", "#3366ff",
-        ]
+    if df_selected_products is not None:
+        if not isinstance(df_selected_products, pd.DataFrame):
+            # Assuming df_selected_products is a JSON-formatted string
+            df_selected_products = pd.read_json(StringIO(df_selected_products), orient='split')
 
-        # We add a radarplot trace for each
-        for i in range(df_selected_products.shape[0]):
-            
-            if len(nutrients_choice) == 0 :
-                mask = df_selected_products.iloc[i][nutrients]
-            else:
-                mask = df_selected_products.iloc[i][nutrients_choice]
+        if df_selected_products.shape[0] > 0 :
+            nb_selected_product = df_selected_products.shape[0]
 
-            # We get the values
-            values = mask.values.tolist() + [mask.values[0]]
-            columns = mask.index.tolist() + [mask.index[0]]
-            
-            # We create the new trace
-            selected_radar_figure = px.line_polar(r = values, theta = columns, markers=True)
-            
-            selected_radar_figure.update_traces(fill='toself')
-            selected_radar_figure.update_traces(fill='toself',
-                                                line_color = blue_colors[i],
-                                                showlegend = True)
-            
-            full_name = df_selected_products.iloc[i].product_name
-            
-            truncated_name = full_name[:20]
-            selected_radar_figure.update_traces(name = truncated_name,
-                                      legendgroup = full_name)#,
-#                                      hovertemplate = full_name)
-        
-            # We add it to the main figure_radar
-            figure_radar.add_trace(selected_radar_figure.data[0])
-    
+            # Differents blue colors
+            blue_colors = [
+                "#0077cc", "#00b8ff", 
+                "#009688", "#35a79c", "#54b2a9", "#65c3ba", "#83d0c9",
+                "#daf8e3", "#97ebdb", "#00c2c7", "#0086ad", "#005582",
+                "#77aaff", "#99ccff", "#bbeeff", "#5588ff", "#3366ff",
+            ]
+
+            # We add a radarplot trace for each
+            for i in range(df_selected_products.shape[0]):
+
+                if len(nutrients_choice) == 0 :
+                    mask = df_selected_products.iloc[i][nutrients]
+                else:
+                    mask = df_selected_products.iloc[i][nutrients_choice]
+
+                # We get the values
+                values = mask.values.tolist() + [mask.values[0]]
+                columns = mask.index.tolist() + [mask.index[0]]
+
+                # We create the new trace
+                selected_radar_figure = px.line_polar(r = values, theta = columns, markers=True)
+
+                selected_radar_figure.update_traces(fill='toself')
+                selected_radar_figure.update_traces(fill='toself',
+                                                    line_color = blue_colors[i],
+                                                    showlegend = True)
+
+                full_name = df_selected_products.iloc[i].product_name
+
+                truncated_name = full_name[:20]
+                selected_radar_figure.update_traces(name = truncated_name,
+                                          legendgroup = full_name)#,
+    #                                      hovertemplate = full_name)
+
+                # We add it to the main figure_radar
+                figure_radar.add_trace(selected_radar_figure.data[0])
+
     # To change the order and put the Median on top
     figure_radar.data = figure_radar.data[::-1]
     figure_radar.update_layout(
@@ -176,7 +188,7 @@ def figure_radar_plot(df_slice, nutrients, nutrients_choice, df_selected_product
                                           font=dict(size=10),itemwidth=30))
     # We change the hovertemplate names
     figure_radar.update_traces(
-        hovertemplate='<br>Value: %{r}<br>Nutrient: %{theta}'
+        hovertemplate='<br>%{theta} = %{r}' # nutrient = value
         )
         # Set the background  
     figure_radar.update_polars(bgcolor='white')
@@ -201,6 +213,7 @@ def figure_radar_plot(df_slice, nutrients, nutrients_choice, df_selected_product
     
     return figure_radar
         
+        
 def create_figure_products(df, list_nutrients, selected_nutrients, selected_graphical_type, df_selected_products):
     """
         V2 of the function creating the different graphics used in the dashboard
@@ -221,45 +234,58 @@ def create_figure_products(df, list_nutrients, selected_nutrients, selected_grap
     selected_nutrients = [] if selected_nutrients == None else selected_nutrients
 
     if selected_graphical_type in ["Distribution", "Products"]:
-        if selected_graphical_type == "Distribution":
-            figure_energy = px.violin(df, y="energy_100g", hover_data=["product_name"], box=False) 
-            figure_others = (px.violin(df, y=selected_nutrients, hover_data=["product_name"], box=False) 
+        if selected_graphical_type == "Distribution": 
+            figure_energy = px.violin(df, y="energy_100g", box=False) 
+            figure_others = (px.violin(df, y=selected_nutrients, box=False) 
                              if len(selected_nutrients) > 0 
-                             else px.violin(df, y=list_nutrients, hover_data=["product_name"], box=False))
+                             else px.violin(df, y=list_nutrients, box=False))
 
             figure_others.update_traces(width = 1)
 
         elif selected_graphical_type == "Products":
-            figure_energy = px.strip(df, y="energy_100g", hover_data=["product_name"]) 
-            figure_others = (px.strip(df, y=selected_nutrients, hover_data=["product_name"]) 
+            figure_energy = px.strip(df, y="energy_100g") 
+            figure_others = (px.strip(df, y=selected_nutrients) 
                                  if len(selected_nutrients) > 0 
-                                 else px.strip(df, y=list_nutrients, hover_data=["product_name"]))  
-
-        figure_energy.update_traces(marker = dict(color = "red"))
-        figure_others.update_traces(marker = dict(color = "green"))
+                                 else px.strip(df, y=list_nutrients))  
+            
+        figure_energy['data'][0]['customdata'] = [name for name in df['product_name']]
+        if len(selected_nutrients) > 0 :
+            figure_others['data'][0]['customdata'] = [name for name in df['product_name']] * len(selected_nutrients)
+        else:
+            figure_others['data'][0]['customdata'] = [name for name in df['product_name']] * len(nutrients)
+        
+        figure_energy.update_traces(marker = dict(color = "red"), hovertemplate='<br>Product name: %{customdata}<br>energy_100g = %{y}')
+        figure_others.update_traces(marker = dict(color = "green"), hovertemplate='<br>Product name: %{customdata}<br>%{x}: %{y}')
                 
                          
-        if df_selected_products != None:
-            # We get the selected producted
-            df_selected_products = pd.read_json(StringIO(df_selected_products), orient='split')
+        if df_selected_products is not None:
+            if not isinstance(df_selected_products, pd.DataFrame):
+                # Assuming df_selected_products is a JSON-formatted string
+                df_selected_products = pd.read_json(StringIO(df_selected_products), orient='split')
 
-            figure_energy_selected = px.strip(df_selected_products, y="energy_100g", hover_data=["product_name"]) 
-            figure_others_selected = (px.strip(df_selected_products, y=selected_nutrients, hover_data=["product_name"]) 
+            figure_energy_selected = px.strip(df_selected_products, y="energy_100g") 
+            figure_others_selected = (px.strip(df_selected_products, y=selected_nutrients) 
                                  if len(selected_nutrients) > 0 
-                                 else px.strip(df_selected_products, y=list_nutrients, hover_data=["product_name"]))
-                             
-            for fig in [figure_energy_selected, figure_others_selected]:   
-                fig.update_traces(marker = dict(color = "blue"), 
-                                            marker_size=8, name="Selected", 
-                                            marker_line_color="black", marker_line_width=2)
+                                 else px.strip(df_selected_products, y=list_nutrients))
+        else :
+            figure_energy_selected = px.strip()
+            figure_others_selected = px.strip()
+            
+        for fig in [figure_energy_selected, figure_others_selected]:   
+            fig.update_traces(marker = dict(color = "blue"), 
+                                marker_size=8, name="Selected", 
+                                marker_line_color="black", marker_line_width=2)
                          
         for i in range(len(figure_energy.data)):
             figure.add_trace(figure_energy.data[i], secondary_y=False)
             figure.add_trace(figure_others.data[i], secondary_y=True)
+            figure.add_trace(figure_energy_selected.data[i], secondary_y=False)
+            figure.add_trace(figure_others_selected.data[i], secondary_y=True)
+
             #
-            if isinstance(df_selected_products, pd.DataFrame): 
-                figure.add_trace(figure_energy_selected.data[i], secondary_y=False)
-                figure.add_trace(figure_others_selected.data[i], secondary_y=True)
+           # if isinstance(df_selected_products, pd.DataFrame): 
+            #    figure.add_trace(figure_energy_selected.data[i], secondary_y=False)
+             #   figure.add_trace(figure_others_selected.data[i], secondary_y=True)
 
         # Update of figure layout
         figure.update_layout(
@@ -304,6 +330,8 @@ def create_figure_products(df, list_nutrients, selected_nutrients, selected_grap
         return empty_figure()
     
     
+    
+    
 def sorting_df(df, sort_by):
     """
         To sort the dataframe
@@ -340,9 +368,72 @@ def col_coloring(sort_by, style_data_conditional):
             style_data_conditional.insert(0, {
                 'if': {'column_id': col['column_id']},
                 'backgroundColor': "#7cc6cb",
+                'fontWeight': 'bold', 
                 'color': 'black'
             })  
     return style_data_conditional
+
+def col_coloring_header(sort_by, style_header_conditional):
+    """
+        To color the columns
+    """
+    if len(sort_by) > 0:    
+        for col in sort_by:
+            # insert instead of append, to place them under the row coloring
+            style_header_conditional.append({
+                'if': {'column_id': col['column_id']},
+                'fontWeight': 'bold', 
+                'backgroundColor': "#7cc6cb",
+                'color': 'black'
+            })  
+    return style_header_conditional
+
+def cache(fun):
+    cache.cache_ = {}
+
+    def inner(country, pnns1, pnns2):
+        # Check if the inputs have changed
+        inputs_changed = (
+            country not in cache.cache_ or
+            pnns1 not in cache.cache_ or
+            pnns2 not in cache.cache_
+        )
+        
+        cache_key = (country, pnns1, pnns2)
+
+        if inputs_changed or cache_key not in cache.cache_:
+            cache.cache_[cache_key] = fun(country, pnns1, pnns2)
+
+        return cache.cache_[cache_key]
+
+    return inner
+
+@cache
+def function(country, pnns1, pnns2):
+    df = data[data.countries_en.str.contains(country)]
+
+    if pnns1:
+        df = df[df.pnns_groups_1 == pnns1]
+    if pnns2:
+        df = df[df.pnns_groups_2 == pnns2]
+
+    return df
+
+def return_df(country, pnns1, pnns2):
+
+    # Returning no data to show
+    if country is None:
+        return None
+
+    # It follow the same path for all
+    df = function(country, pnns1, pnns2)
+
+    for nutrient in ["energy_100g"] + nutrients:
+        nutrient_min = math.floor(df[f'{nutrient}'].min())
+        nutrient_max = math.ceil(df[f'{nutrient}'].max())
+        df = df[(df[nutrient] >= nutrient_min) & (df[nutrient] <= nutrient_max)]
+    
+    return df
 
 ##### Initialize the app - incorporate css
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -353,7 +444,9 @@ server = app.server
 
 app.title = 'Nutrition app'
 
-versionning = "version: 0.5.0"
+versionning = "version: 0.5.1"
+
+DEBUG = False
 
 products_availability = "Referenced products: " + str(data.shape[0])
 
@@ -486,45 +579,41 @@ app.layout = html.Div([
         ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
     
     # Table with data selection
-    html.Div([
-        html.Div(className='row', children="List of products by your search (max 20)",
-             style={'textAlign': 'center', 'color': 'black', 'fontSize': 30}),
-        html.Div( 
-            dash_table.DataTable(
-                data=None,
-                columns=columns,
-                page_size = 50,
-                sort_action='native',
-                sort_mode='multi',
-                style_table={'overflowX': 'auto'},
-                row_selectable='multi',
-                selected_rows=[],
-                style_cell={
-                    'textAlign': 'center',
-                    'height': 'auto',
-                    'minWidth': '180px', 'width': '180px', 'maxWidth': '180px',
-                    'whiteSpace': 'normal'
-                },
-                sort_by=[{'column_id':'nutriscore_score', 'direction':'asc'}], 
-                id = "table_products"))
-    ], style={'width': '100%'}),
+    html.Div(className='row', children="Top list of products by your search",
+         style={'textAlign': 'center', 'color': 'black', 'fontSize': 30}),
     
-    dcc.Store(id='initial_file', data=None),
-    dcc.Store(id='intermed_file', data=None),
-    dcc.Store(id='intermed_slide_file', data=None),
+    html.Div(
+        dash_table.DataTable(
+            data=None,
+            columns=columns,
+            page_size = 50,
+            sort_action='native',
+            sort_mode='multi',
+            style_header={'fontWeight': 'bold', 'color': 'black'},
+            style_table={'overflowX': 'auto'},
+            row_selectable='multi',
+            selected_rows=[],
+            style_cell={
+                'textAlign': 'center',
+                'height': 'auto',
+                #'minWidth': '180px', 'width': '180px', 'maxWidth': '180px',
+                'whiteSpace': 'normal'
+            },
+            sort_by=[{'column_id':'nutriscore_score', 'direction':'asc'}], 
+            id = "table_products"
+    ), style={'width': '100%'}),
+    
     dcc.Store(id='sliced_file', data=None),
     dcc.Store(id='personnalized_sorting', data=[]),
     dcc.Store(id='selected_product_table', data=None),
     dcc.Store(id='dropdown_search_bar_number', data=0),
     dcc.Store(id='dropdown_table_number', data=0),
+    dcc.Store(id='initialization_graph', data = False)
     
     
 ])
 
 @app.callback(
-    Output('initial_file', 'data'),
-    Output('intermed_file', 'data'),
-    Output('intermed_slide_file', 'data'),
     Output('sliced_file', 'data'),
     
     Input('dropdown_country','value'),
@@ -532,90 +621,38 @@ app.layout = html.Div([
     Input('dropdown_pnns2','value'),
     
     *[Input(f'{slide}', 'value') for slide in slider_trigger],
-    
-    State('initial_file', 'data'),
-    State('intermed_file', 'data'),
-    State('intermed_slide_file', 'data'),
-    State('sliced_file', 'data'),
 )
 
 def data_slicing(country, pnns1, pnns2,
                  slide_energy, slide_fat, slide_sat_fat, slide_carbs, 
-                 slide_fiber, slide_prot, slide_salt, slide_macro,
-                 df_origin, df_intermediaire, df_inter_slide, df_slice):
+                 slide_fiber, slide_prot, slide_salt, slide_macro):
 
     sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
-    # Initial call
-    if df_origin is None:
-        df_origin = data.to_json(orient='split')
+    elapsed_time = time.time() if DEBUG else None
     
-    # We do soething only if a country has been selected
-    if country == None :
-    
-        return dash.no_update, None, None, None
+    # Returning no data to show
+    if country is None:
+        return None
 
-    else :
-        # Filtering based on country
-        if ctx.triggered_id == "dropdown_country" or ctx.triggered_id is None:
-            df_intermediaire = pd.read_json(StringIO(df_origin), orient='split')
-            df_intermediaire = df_intermediaire[df_intermediaire.countries_en.str.contains(country)]
+    # It follow the same path for all
+    df = data[data.countries_en.str.contains(country)]
 
-            df_inter_slide = copy.copy(df_intermediaire)
-            
-            # Verification of pnns conformity
-            if pnns1 != None :
-                df_inter_slide = df_inter_slide[df_inter_slide.pnns_groups_1 == pnns1]
-            if pnns2 != None : 
-                df_inter_slide = df_inter_slide[df_inter_slide.pnns_groups_2 == pnns2]
+    if pnns1:
+        df = df[df.pnns_groups_1 == pnns1]
+    if pnns2:
+        df = df[df.pnns_groups_2 == pnns2]
 
-            df_slice = copy.copy(df_inter_slide)
+    for nutrient in ["energy_100g"] + nutrients:
+        nutrient_min = math.floor(df[f'{nutrient}'].min())
+        nutrient_max = math.ceil(df[f'{nutrient}'].max())
+        df = df[(df[nutrient] >= nutrient_min) & (df[nutrient] <= nutrient_max)]
 
-            df_intermediaire = df_intermediaire.to_json(orient='split')
-            df_inter_slide = df_inter_slide.to_json(orient='split')
-
-            
-        # Filtering based on pnns1
-        if ctx.triggered_id in ["dropdown_pnns1"]:
-            df_inter_slide = pd.read_json(StringIO(df_intermediaire), orient='split')
-            # Verification of pnns conformity
-            if pnns1 != None:
-                df_inter_slide = df_inter_slide[df_inter_slide.pnns_groups_1 == pnns1]
-                
-            df_intermediaire, df_origin = dash.no_update, dash.no_update
-            df_slice = copy.copy(df_inter_slide)
-            df_inter_slide = df_inter_slide.to_json(orient='split')
-
-        # Filtering based on pnns2
-        if ctx.triggered_id in ["dropdown_pnns2"]:
-            df_inter_slide = pd.read_json(StringIO(df_intermediaire), orient='split')
-            # Verification of pnns conformity
-            if (pnns1 != None) & (pnns2 != None):
-                df_inter_slide = df_inter_slide[(df_inter_slide.pnns_groups_1 == pnns1) &
-                                                (df_inter_slide.pnns_groups_2 == pnns2)]
-            else :
-                df_inter_slide = df_inter_slide[(df_inter_slide.pnns_groups_1 == pnns1)]
-                
-            df_intermediaire, df_origin = dash.no_update, dash.no_update
-            df_slice = copy.copy(df_inter_slide)
-            df_inter_slide = df_inter_slide.to_json(orient='split')
-
-        # Filtering based on slide
-        if ctx.triggered_id in slider_trigger:
-
-            df_slice = pd.read_json(StringIO(df_inter_slide), orient='split')
-            
-            df_intermediaire, df_origin, df_inter_slide = dash.no_update, dash.no_update, dash.no_update
-
+    if ctx.triggered_id in slider_trigger:
         for nutrient, slide in zip(["energy_100g"] + nutrients, sliders):
-            if ctx.triggered_id not in slider_trigger:
-                nutrient_min = math.floor(df_slice[f'{nutrient}'].min())
-                nutrient_max = math.ceil(df_slice[f'{nutrient}'].max())
-                df_slice = df_slice[(df_slice[nutrient] >= nutrient_min) & (df_slice[nutrient] <= nutrient_max)]
-            elif ctx.triggered_id in slider_trigger:
-                df_slice = df_slice[(df_slice[nutrient] >= slide[0]) & (df_slice[nutrient] <= slide[1])]
+            df = df[(df[nutrient] >= slide[0]) & (df[nutrient] <= slide[1])]
 
-        df_slice = df_slice.to_json(orient='split') 
-    return df_origin, df_intermediaire, df_inter_slide, df_slice
+    print("Data slicing", time.time() - elapsed_time) if DEBUG else None
+    return df.to_json(orient='split')
 
 
 @app.callback(
@@ -648,6 +685,7 @@ def choice_country(country):
 
 # We define the pnns_groups
 def choice_pnns_groups(pnns1, pnns2, country, pnns_groups_1, pnns_groups_2):
+    elapsed_time = time.time() if DEBUG else None
     # Modifying only if necessary
     if ctx.triggered_id == "dropdown_country":
         if country is None:
@@ -689,7 +727,8 @@ def choice_pnns_groups(pnns1, pnns2, country, pnns_groups_1, pnns_groups_2):
         pnns1 = None
     if pnns2 == []:
         pnns2 = None
-        
+    
+    print("choice_pnns_groups", time.time() - elapsed_time) if DEBUG else None
     return pnns_groups_1, pnns_groups_2, pnns1, pnns2
 
     
@@ -699,25 +738,29 @@ def choice_pnns_groups(pnns1, pnns2, country, pnns_groups_1, pnns_groups_2):
     for slide in slider_trigger
     for property in ['min', 'max', 'marks', 'value']
     ],
-    Input('intermed_slide_file', 'data'),
+    Input('dropdown_country','value'),
+    Input('dropdown_pnns1','value'),
+    Input('dropdown_pnns2','value'),
     Input('reset_sliders_button', 'n_clicks'),
     prevent_initial_call=True,
 )
-def update_sliders(df_inter_slide, n_clicks):
+def update_sliders(country, pnns1, pnns2, n_clicks):
+    elapsed_time = time.time() if DEBUG else None
             
-    # If we change the data
-    if (df_inter_slide != None) & (ctx.triggered_id == "intermed_slide_file" or 
-                                   ctx.triggered_id == "reset_sliders_button"):
-
-        df_inter_slide = pd.read_json(StringIO(df_inter_slide), orient='split')
+    # If the data change, we change the sliders
+    df = return_df(country, pnns1, pnns2)
+    
+    if isinstance(df, pd.DataFrame):
         output_values = []
-        
+
         # Rounding down
         for nutrient in ["energy_100g"] + nutrients:
-            nutrient_min = math.floor(df_inter_slide[f'{nutrient}'].min())
-            nutrient_max = math.ceil(df_inter_slide[f'{nutrient}'].max())
+            nutrient_min = math.floor(df[f'{nutrient}'].min())
+            nutrient_max = math.ceil(df[f'{nutrient}'].max())
             nutrient_marks = {nutrient_min: str(nutrient_min), nutrient_max: str(nutrient_max)}
             output_values.extend([nutrient_min, nutrient_max, nutrient_marks, [math.floor(nutrient_min), math.ceil(nutrient_max)]])
+
+        print("update_sliders", time.time() - elapsed_time) if DEBUG else None
 
         return tuple(output_values)
 
@@ -728,6 +771,7 @@ def update_sliders(df_inter_slide, n_clicks):
     Output('search_bar', 'value'),
     Output('table_products', 'selected_rows'),
     Output('table_products', 'style_data_conditional'),
+    Output('table_products', 'style_header_conditional'),
     Output('table_products', 'data'),
     Output('selected_product_table', 'data'),
     Output('dropdown_search_bar_number', 'data'),
@@ -737,30 +781,67 @@ def update_sliders(df_inter_slide, n_clicks):
     Input('table_products', 'selected_rows'),
     Input('table_products', 'sort_by'),
     Input('sliced_file', 'data'),
-    Input('intermed_slide_file', 'data'),
     
     State('table_products', 'data'),
     State('selected_product_table', 'data'),
     State('dropdown_search_bar_number', 'data'),
     State('dropdown_table_number', 'data'),
+    State('dropdown_country','value'),
+    State('dropdown_pnns1','value'),
+    State('dropdown_pnns2','value'),
+    State('search_bar', 'options'),
     
     prevent_initial_call=True,
 )
 
-def search_bar_and_table(search_bar_values, selected_row_ids, sort_by, 
-                         sliced_file, df_inter_slide, dash_table, dash_table_selected, search_bar_count, table_count):
+def search_bar_and_table(search_bar_values, selected_row_ids, sort_by, sliced_file, df_dash_table, 
+                         dash_table_selected, search_bar_count, table_count, country, pnns1, pnns2, search_bar_option):
+    elapsed_time = time.time() if DEBUG else None
     # Verification of data
-    if (sliced_file == None) or (df_inter_slide == None):
-        return [], [], [], [], [], None, 0, 0
+    if (sliced_file == None) or (country == None):
+        print("search_bar_and_table", time.time() - elapsed_time) if DEBUG else None
+        return [], [], [], [], [], [], None, 0, 0
     
     # Coloring row and columns, depending of selection or sort_by
     style_data_conditional = []
+    style_header_conditional = []
+    
     if dash_table_selected != None:
         dash_table_selected = pd.read_json(StringIO(dash_table_selected), orient='split')
     else:
         dash_table_selected = None                                   
     
-    if ctx.triggered_id in ['sliced_file', 'search_bar', 'table_products']:
+    if search_bar_option == []:
+        # If we change pnns or country group, we change the bar_option
+        df = return_df(country, pnns1, pnns2)
+        
+        # Get a Series with unique product names and their counts
+        unique_counts = df['product_name'].value_counts()
+        # Sort the unique product names
+        sorted_names = unique_counts.index.sort_values()
+
+        # Create the search_bar_option list
+        search_bar_option = [
+            {
+                'label': f"{name} [{count} products]",
+                'value': name
+            }
+            for name, count in unique_counts[sorted_names].items()
+        ]
+        
+        df = sorting_df(df, sort_by)
+        
+        # We take the best 20
+        df_dash_table = df[:20].to_dict('records')
+        
+        # Initialization 
+        dash_table_selected = None
+        search_bar_count = 0
+        table_count = 0
+        selected_row_ids = []
+        search_bar_values = []
+        
+    elif ctx.triggered_id in ['sliced_file', 'search_bar', 'table_products']:
         search_bar_option = dash.no_update
         
         df_dash_table = pd.read_json(StringIO(sliced_file), orient='split')
@@ -769,24 +850,6 @@ def search_bar_and_table(search_bar_values, selected_row_ids, sort_by,
         
         # We take the best 20
         df_dash_table = df_dash_table[:20]
-    
-    elif ctx.triggered_id == 'intermed_slide_file':
-        # If we change pnns or country group, we change the bar_option
-        df = pd.read_json(StringIO(df_inter_slide), orient='split')
-        
-        search_bar_option = sorted(df.product_name.unique())
-        
-        df = sorting_df(df, sort_by)
-        
-        # We take the best 20
-        dash_table = df[:20].to_dict('records')
-        
-        # Initialization 
-        dash_table_selected = None
-        search_bar_count = 0
-        table_count = 0
-        selected_row_ids = []
-        search_bar_values = []
         
     if ctx.triggered_id == 'sliced_file':
         if isinstance(dash_table_selected, pd.DataFrame): 
@@ -801,7 +864,7 @@ def search_bar_and_table(search_bar_values, selected_row_ids, sort_by,
         # We actualise the selected row in the dash table
         if len(search_bar_values) > 0 or len(selected_row_ids) > 0:
             # We need to extract the data from the bigger file
-            df = pd.read_json(StringIO(df_inter_slide), orient='split')
+            df = return_df(country, pnns1, pnns2)
             df = df[df.product_name.isin(search_bar_values)]
             
             # New table
@@ -859,23 +922,28 @@ def search_bar_and_table(search_bar_values, selected_row_ids, sort_by,
             table_count = 0
     
     else:
-        style_data_conditional = row_coloring(dash_table, selected_row_ids, style_data_conditional)
+        if isinstance(df_dash_table, pd.DataFrame): 
+            df_dash_table = df_dash_table.to_dict('records')
+        
+        style_data_conditional = row_coloring(df_dash_table, selected_row_ids, style_data_conditional)
         style_data_conditional = col_coloring(sort_by, style_data_conditional)
+        style_header_conditional = col_coloring_header(sort_by, style_header_conditional)
         
         return (search_bar_option, search_bar_values, selected_row_ids, style_data_conditional, 
-            dash_table, dash_table_selected, search_bar_count, table_count)
+            style_data_conditional, df_dash_table, dash_table_selected, search_bar_count, table_count)
     
     if isinstance(df_dash_table, pd.DataFrame): 
-        dash_table = df_dash_table.to_dict('records')
+        df_dash_table = df_dash_table.to_dict('records')
     
-    style_data_conditional = row_coloring(dash_table, selected_row_ids, style_data_conditional)
+    style_data_conditional = row_coloring(df_dash_table, selected_row_ids, style_data_conditional)
     style_data_conditional = col_coloring(sort_by, style_data_conditional)
+    style_header_conditional = col_coloring_header(sort_by, style_header_conditional)
 
     if isinstance(dash_table_selected, pd.DataFrame):         
         dash_table_selected = dash_table_selected.to_json(orient='split')
-    
+    print("search_bar_and_table", time.time() - elapsed_time) if DEBUG else None
     return (search_bar_option, search_bar_values, selected_row_ids, style_data_conditional, 
-            dash_table, dash_table_selected, search_bar_count, table_count)
+            style_header_conditional, df_dash_table, dash_table_selected, search_bar_count, table_count)
     
 @app.callback(
     
@@ -891,6 +959,7 @@ def search_bar_and_table(search_bar_values, selected_row_ids, sort_by,
 )
 
 def diet_controling(diet, sort_by, customized_sorting):
+    elapsed_time = time.time() if DEBUG else None
 
     type_diet={
         "Healthier foods": [
@@ -930,89 +999,184 @@ def diet_controling(diet, sort_by, customized_sorting):
 
             # We update options_diet
             options_diet = diets + ["Customized_sorting"]
-            
+
+            print("diet_controling", time.time() - elapsed_time) if DEBUG else None
             return customized_sorting, "Customized_sorting", options_diet, customized_sorting
         
         # No sorting
         else :
             return [], None, diets, []
             
+    print("diet_controling", time.time() - elapsed_time) if DEBUG else None
     return type_diet[diet], dash.no_update, dash.no_update, dash.no_update
     
 
 @app.callback(
     Output('graph_macronutrients', 'figure'),
+    Output('initialization_graph', 'data'),
     
     Input('dropdown_nutrients', 'value'),
     Input('check_list_graph', 'value'),
     Input('sliced_file', 'data'),
     Input('selected_product_table', 'data'),
     *[Input(f'{slide}', 'value') for slide in slider_trigger],
+    State('initialization_graph', 'data'),
 )
     
 # We produce the main graphic depending of several input
 def graph_macronutrients(nutrients_choice, ch_list_graph, df_slice, df_selected_product,
                         slide_energy, slide_fat, slide_sat_fat, slide_carbs, 
-                         slide_fiber, slide_prot, slide_salt, slide_macro):
+                         slide_fiber, slide_prot, slide_salt, slide_macro, initialization_graph):
     
     sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
+    elapsed_time = time.time() if DEBUG else None
     
     if df_slice != None :  
         df_slice = pd.read_json(StringIO(df_slice), orient='split')
+        
+        # We check if the graphic has been initialize
+        if initialization_graph == False:
+            figure_nutrients_radio = create_figure_products(df_slice, nutrients, nutrients_choice, ch_list_graph, df_selected_product) 
+            # We set initialization_graph to True after initialization
+            print("graph_macronutrients 0", time.time() - elapsed_time) if DEBUG else None
+            return figure_nutrients_radio, True
+        else:
+            initialization_graph = dash.no_update
+        
         # Verification that there is data
         if df_slice.shape[0] > 0 :
           
-            if ctx.triggered_id in ["sliced_file", "dropdown_nutrients", "check_list_graph", "selected_product_table"]:
+            if ctx.triggered_id in ["check_list_graph"]:
                 # We create the figure
                 figure_nutrients_radio = create_figure_products(df_slice, nutrients, nutrients_choice, ch_list_graph, df_selected_product) 
+                print("graph_macronutrients Creation", time.time() - elapsed_time) if DEBUG else None
 
-                return figure_nutrients_radio
+                return figure_nutrients_radio, initialization_graph
         
-            elif ctx.triggered_id in slider_trigger:
+            elif ctx.triggered_id in slider_trigger + ["sliced_file", "selected_product_table"]:
+                
+                # We take a Patch() to modify only some elements of the figure
                 patched_figure = Patch()
+                
+                if ctx.triggered_id == "selected_product_table":
+                    df = pd.read_json(StringIO(df_selected_product), orient='split')
+                
+                else:
+                    df = df_slice
+                    # We change the title when too much data is changing
+                    patched_figure['layout']['title']['text'] = f'Distribution of macronutrients of selected products [{df_slice.shape[0]}]'
             
-                if nutrients_choice is not None:
+                if nutrients_choice not in [None, []]:
                     nutrients_list = nutrients_choice
                 else:
                     nutrients_list = nutrients
                 
-                product_name_list = [[value] for value in df_slice["product_name"].values]
+                product_name_list = [[value] for value in df["product_name"].values]
                 # Changing the title 
-                patched_figure['layout']['title']['text'] = f'Distribution of macronutrients of selected products [{df_slice.shape[0]}]'
                 
                 if ch_list_graph in ["Distribution", "Products"]:
+                    if ctx.triggered_id !=  "selected_product_table":
+                        A, B = 0, 1
+                    else:
+                        A, B = 2, 3
+                        
+                    patched_figure['data'][A]['customdata'] = product_name_list
+                    patched_figure['data'][B]['customdata'] = product_name_list * len(nutrients_list)
 
-                    patched_figure['data'][0]['customdata'] = product_name_list
-                    patched_figure['data'][1]['customdata'] = product_name_list * len(nutrients_list)
+                    patched_figure['data'][A]['y'] = [value for value in df["energy_100g"].values]
+                    patched_figure['data'][B]['x'] = [nut for nut in nutrients_list for value in df[nut].values]
+                    patched_figure['data'][B]['y'] = [value for nut in nutrients_list for value in df[nut].values]
+                    if A == 2:
+                        patched_figure['data'][A]['hovertemplate'] = '<br>Product name: %{customdata}<br>energy_100g = %{y}'
+                        patched_figure['data'][B]['hovertemplate'] = '<br>Product name: %{customdata}<br>%{x}: %{y}'
 
-                    patched_figure['data'][0]['y'] = [value for value in df_slice["energy_100g"].values]
-                    patched_figure['data'][1]['x'] = [nut for nut in nutrients_list for value in df_slice[nut].values]
-                    patched_figure['data'][1]['y'] = [value for nut in nutrients_list for value in df_slice[nut].values]
+                elif ch_list_graph == "Radarplot" and ctx.triggered_id ==  "selected_product_table":
+                    
+                    patched_figure = create_figure_products(df_slice, nutrients_list, nutrients_list, ch_list_graph, df)
                     
                 else: 
                     # For modifiying the median values 
                     # theta: nutrients names
                     # r: values
                     # -1: median position in the figure
-                    median_df = df_slice[nutrients_list].median()
+                    median_df = df[nutrients_list].median()
 
                     # We repeat the first at the end to close the radarplot
                     values = median_df.values.tolist() + [median_df.values[0]]
                     columns = median_df.index.tolist() + [median_df.index[0]]
-                        
+
                     patched_figure['data'][-1]['theta'] = columns
                     patched_figure['data'][-1]['r'] = values
-                    
+
                     patched_figure['data'][-1]['name']= f'Median of {df_slice.shape[0]} products'
-                    
-                return patched_figure
+                
+                print("graph_macronutrients 2", time.time() - elapsed_time) if DEBUG else None
+                return patched_figure, initialization_graph
+            elif ctx.triggered_id == "dropdown_nutrients":
+                
+                # We take a Patch() to modify only some elements of the figure
+                patched_figure = Patch()
+                if df_selected_product != None :
+                    dffs = [df_slice, pd.read_json(StringIO(df_selected_product), orient='split')]
+                else :
+                    dffs = [df_slice]
+                for i, df in enumerate(dffs):
+                
+                    if nutrients_choice not in [None, []]:
+                        nutrients_list = nutrients_choice
+                    else:
+                        nutrients_list = nutrients
+                
+                    product_name_list = [[value] for value in df["product_name"].values]
+                    # Changing the title 
+
+                    if ch_list_graph in ["Distribution", "Products"]:
+                        if i == 0:
+                            A, B = 0, 1
+                        else:
+                            A, B = 2, 3
+                            
+                        patched_figure['data'][A]['customdata'] = product_name_list
+                        patched_figure['data'][B]['customdata'] = product_name_list * len(nutrients_list)
+
+                        patched_figure['data'][A]['y'] = [value for value in df["energy_100g"].values]
+                        patched_figure['data'][B]['x'] = [nut for nut in nutrients_list for value in df[nut].values]
+                        patched_figure['data'][B]['y'] = [value for nut in nutrients_list for value in df[nut].values]
+                        if A == 2:
+                            patched_figure['data'][A]['hovertemplate'] = '<br>Product name: %{customdata}<br>energy_100g = %{y}'
+                            patched_figure['data'][B]['hovertemplate'] = '<br>Product name: %{customdata}<br>%{x}: %{y}'
+
+                    elif ch_list_graph == "Radarplot" and i == 1:
+                        if df.shape[0] > 0 :
+                            patched_figure = create_figure_products(df_slice, nutrients_list, nutrients_list, ch_list_graph, df)
+                            return patched_figure, initialization_graph
+                    else: 
+                        # For modifiying the median values 
+                        # theta: nutrients names
+                        # r: values
+                        # -1: median position in the figure
+                        median_df = df[nutrients_list].median()
+
+                        # We repeat the first at the end to close the radarplot
+                        values = median_df.values.tolist() + [median_df.values[0]]
+                        columns = median_df.index.tolist() + [median_df.index[0]]
+
+                        patched_figure['data'][-1]['theta'] = columns
+                        patched_figure['data'][-1]['r'] = values
+
+                        patched_figure['data'][-1]['name']= f'Median of {df_slice.shape[0]} products'
+
+                print("graph_macronutrients 2", time.time() - elapsed_time) if DEBUG else None
+                return patched_figure, initialization_graph
             
         else :
-            return empty_figure()
+            print("graph_macronutrients 3", time.time() - elapsed_time) if DEBUG else None
+            return empty_figure(), initialization_graph
     
     # If no country selected, no data to show
     else :
-        return empty_figure()
+        print("graph_macronutrients 4", time.time() - elapsed_time) if DEBUG else None
+        return empty_figure(), initialization_graph
     
 # Run the app
 if __name__ == '__main__':
