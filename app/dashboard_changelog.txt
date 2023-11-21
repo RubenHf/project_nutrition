@@ -1,3 +1,14 @@
+Version 0.6.0
+-Overall change of the design of the dashboard. It is more menu-like. 
+-Images were added for the products 
+-Table was discarded
+-Best 5 products are shown for each category of products with the same sorting as before, but now all can be seen at the same time.
+-Search_product has been extend to all product available in the country
+-When searching for a product, it will show the best 5 products in each sorting category, for the same grouping
+-Graphics of the distribution is now shown when a product is selected, or a sorting category
+-Pending: The use of sliders has been cancel, it will be added back with an advanced search function
+-Pending: Clickable image of product, to go directly to the product.
+-Pending: Overall optimization of code.
 Version 0.5.1
 -DashTable: header coloring by sort_by values
 -DashTable: Now the table is in frame with everything, done by changing the styling of the cell
