@@ -1,3 +1,10 @@
+Version 0.6.1
+-Added: Advanced search feature
+-Advanced search: You can narrow the search to the pnns1 and pnns2 groups, filter by nutrition plan (must), and sliders have been brought back here
+-Advanced search: The filtering data is conserve on user side with a dcc.store
+-Advanced search: The results show the best 10 in the nutritious plan chose, with description of the products (images and nutriments)
+-Nutrition score image: Correction of the mapping and optimization of the algorithm
+
 Version 0.6.0
 -Overall change of the design of the dashboard. It is more menu-like. 
 -Images were added for the products 
