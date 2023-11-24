@@ -1,3 +1,11 @@
+Version 0.6.3
+-Correction: Advanced search had an malfunction because of the past implement
+-Images: Wrapped by a dcc.link, to show that there are clickable
+-Images: Try/except added when an image is selected but it doesn't find it
+-Frontend: Dropdown are shown clickable
+-Frontend: Left panel can now be reduce with a button, and resize
+-Frontend: Vertical line to separate left and right panel
+-Frontend: Now, when it detected a mobile user or small desktop, the left panel is on top and the right one on the bottom
 Version 0.6.2
 -Minors changes in some function
 -Frontend: Left side and Right side are independent now with the scrolling

@@ -68,7 +68,8 @@ def generate_dropdown(value, options, placeholder, multi, id, clearable = True):
     return dcc.Dropdown(
                 value=value,
                 options=options,
-                style={'fontFamily': 'monospace', 'align-items': 'center', 'justify-content': 'center', 'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'width': '100%'},
+                style={'fontFamily': 'monospace', 'align-items': 'center', 'justify-content': 'center', 
+                       'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'width': '100%', 'cursor': 'pointer'},
                 placeholder=placeholder,
                 multi=multi,
                 id=id,
@@ -484,9 +485,10 @@ def df_sorting(diet, df = None):
         return column_id
 
 
-
 ##### Initialize the app - incorporate css
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+# Linked to the external CSS file 
+# For display depending of screen
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css', '/assets/styles.css']
 
 app = Dash(__name__, external_stylesheets=external_stylesheets, suppress_callback_exceptions=True)
 
@@ -494,9 +496,9 @@ server = app.server
 
 app.title = 'Nutrition app'
 
-versionning = "version: 0.6.2"
+versionning = "version: 0.6.3"
 
-DEBUG = False
+DEBUG = True
 
 products_availability = "Referenced products: " + str(data.shape[0])
 
@@ -515,7 +517,7 @@ c1 = [country.split(",") for country in data.countries_en.unique()]
 c2 = [count for country in c1 for count in country]
 unique_countries = sorted(list(set(c2)))
 
-flags = {"United States": "🇺🇸", "France":"🇫🇷", "Germany":"🇩🇪", "United Kingdom":"🇬🇧"}
+flags = {"United States":"🇺🇸", "France":"🇫🇷", "Germany":"🇩🇪", "United Kingdom":"🇬🇧"}
 
 # Generate list of unique countries
 unique_countries = [
@@ -553,115 +555,123 @@ for pnns1 in pnns_groups_1:
 
 app.layout = html.Div([
     # Left side
-    html.Div([    
-        # Image of the dashboard
-        html.Div(
-            html.Img(src=dash.get_asset_url('pomme.jpeg'), 
-                 style={'width': '300px', 'height': '300px'}),
-            style={'textAlign': 'center'}),
-
-        # Title
-        html.Div(className='row', children="Nutritious app",
-                 style={'textAlign': 'center', 'color': 'black', 'fontSize': 48}),
-
-        # Horizontale line
-        html.Hr(style={'border-top': '4px solid black'}),  
-        
-            # Dropdown for the countries
-        html.Div([
-            generate_dropdown(default_country, unique_countries, "Choose a country", False, 'dropdown_country', False)
-        ], style={'margin': '0 auto', 'border': '1px solid black'}),
-        
-        # Searchbar products
-        html.Div([
-            generate_dropdown(None, [], "Search a product", False, 'search_bar')
-        ], style={'margin': '0 auto', 'border': '1px solid black'}),
-            
-        # Advanced searchbar products
-        html.Div([
-            html.Button(
-                    "Advanced search 🔍",
-                    id="advanced_search_button",
-                    n_clicks=0,
-                    style={'align-items': 'center', 'justify-content': 'center', 'border': '1px solid black',
-                        'font-size': '15px', 'color': 'black', 'width': '100%', 
-                           'textAlign': 'center', 'margin': '0px', 'background-color': 'white'}
-                )
-        ], style={'margin': '0 auto', 'margin-bottom': '20px'}),
-        
-        html.Div([
-            html.Div([
-                html.Button(
-                    pnns1["label"],
-                    id=str(pnns1["value"]),
-                    n_clicks=0,
-                    style={'font-size': '16px', 'color': 'black', 'width': '100%', 
-                           'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
-                ),
-                html.Button(
-                    pnns2["label"],
-                    id=str(pnns2["value"]),
-                    n_clicks=0,
-                    style={'font-size': '10px', 'color': 'black', 'width': '100%', 'display':'none',
-                           'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
-                ),
-            ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'}) 
-            if y == 0 and str(pnns1["value"]) != str(pnns2["value"]) else 
-            html.Button(
-                    pnns1["label"],
-                    id=str(pnns1["value"]),
-                    n_clicks=0,
-                    style={'font-size': '16px', 'color': 'black', 'width': '100%', 
-                           'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
-                )
-            if str(pnns1["value"]) == str(pnns2["value"]) else
-            html.Div([
-                html.Button(
-                    pnns2["label"],
-                    id=str(pnns2["value"]),
-                    n_clicks=0,
-                    style={'font-size': '10px', 'color': 'black', 'width': '100%', 'display':'none', 
-                           'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
-                ),
-            ])
-            for pnns1 in pnns_groups_options(data, default_country, "pnns_groups_1")
-            for y, pnns2 in enumerate(pnns_groups_options(data, default_country, "pnns_groups_2", pnns1["value"]))
+    html.Div(id='left_panel', children=[    
+        html.Div(id='left_panel_div1', children=[  
+            # For closing or opening the left panel
+            html.Button('←', id='arrow_button_panel', 
+                style={'font-size': '48px', 'padding': '0', 'margin': '0', 'border': 'none'})
         ]),
-        
-         dcc.Dropdown(
-            id='dropdown_number_product',
-            options=[
-                {'label': 'Displaying 5 products', 'value': 5},
-                {'label': 'Displaying 10 products', 'value': 10},
-                {'label': 'Displaying 15 products', 'value': 15},
-                {'label': 'Displaying 20 products', 'value': 20},
-            ],
-            clearable=False,
-            value=10,  # Set the default value
-            style={'font-size': '20px', 'color': 'black',  
-                   'textAlign': 'center', 'border': '1px solid black'}
-        ),
-        
-        # Informations
-        html.Div([
-            html.Div(className='row', children="Ruben HALIFA"),
-
-            html.Div(className='row', children=versionning),
-
-            html.Div(className='row', children=products_availability),
-        ], style={'textAlign': 'left', 'color': 'black', 'fontSize': 12}),
-    ], style={'background-color': '#F0F0F0', 'overflowY': 'scroll', 'height': '100vh', 'flex': '1', 'direction': 'rtl'}),
     
+        html.Div(id='left_panel_div2', children=[     
+            html.Div(
+                html.Img(src=dash.get_asset_url('pomme.jpeg'), 
+                     style={'width': '300px', 'height': '300px'}),
+                style={'textAlign': 'center'}),
+
+            # Title
+            html.Div(className='row', children="Nutritious app",
+                     style={'textAlign': 'center', 'color': 'black', 'fontSize': 48}),
+
+            # Horizontale line
+            html.Hr(style={'border-top': '4px solid black'}),  
+
+                # Dropdown for the countries
+            html.Div([
+                generate_dropdown(default_country, unique_countries, "Choose a country", False, 'dropdown_country', False)
+            ], style={'margin': '0 auto', 'border': '1px solid black'}),
+
+            # Searchbar products
+            html.Div([
+                generate_dropdown(None, [], "Search a product", False, 'search_bar')
+            ], style={'margin': '0 auto', 'border': '1px solid black'}),
+
+            # Advanced searchbar products
+            html.Div([
+                html.Button(
+                        "Advanced search 🔍",
+                        id="advanced_search_button",
+                        n_clicks=0,
+                        style={'align-items': 'center', 'justify-content': 'center', 'border': '1px solid black',
+                            'font-size': '15px', 'color': 'black', 'width': '100%', 
+                               'textAlign': 'center', 'margin': '0px', 'background-color': 'white'}
+                    )
+            ], style={'margin': '0 auto', 'margin-bottom': '20px'}),
+
+            html.Div([
+                html.Div([
+                    html.Button(
+                        pnns1["label"],
+                        id=str(pnns1["value"]),
+                        n_clicks=0,
+                        style={'font-size': '16px', 'color': 'black', 'width': '100%', 
+                               'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
+                    ),
+                    html.Button(
+                        pnns2["label"],
+                        id=str(pnns2["value"]),
+                        n_clicks=0,
+                        style={'font-size': '10px', 'color': 'black', 'width': '100%', 'display':'none',
+                               'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
+                    ),
+                ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'}) 
+                if y == 0 and str(pnns1["value"]) != str(pnns2["value"]) else 
+                html.Button(
+                        pnns1["label"],
+                        id=str(pnns1["value"]),
+                        n_clicks=0,
+                        style={'font-size': '16px', 'color': 'black', 'width': '100%', 
+                               'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
+                    )
+                if str(pnns1["value"]) == str(pnns2["value"]) else
+                html.Div([
+                    html.Button(
+                        pnns2["label"],
+                        id=str(pnns2["value"]),
+                        n_clicks=0,
+                        style={'font-size': '10px', 'color': 'black', 'width': '100%', 'display':'none', 
+                               'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
+                    ),
+                ])
+                for pnns1 in pnns_groups_options(data, default_country, "pnns_groups_1")
+                for y, pnns2 in enumerate(pnns_groups_options(data, default_country, "pnns_groups_2", pnns1["value"]))
+            ]),
+
+             dcc.Dropdown(
+                id='dropdown_number_product',
+                options=[
+                    {'label': 'Displaying 5 products', 'value': 5},
+                    {'label': 'Displaying 10 products', 'value': 10},
+                    {'label': 'Displaying 15 products', 'value': 15},
+                    {'label': 'Displaying 20 products', 'value': 20},
+                ],
+                clearable=False,
+                value=10,  # Set the default value
+                style={'font-size': '20px', 'color': 'black', 'cursor': 'pointer',  
+                       'textAlign': 'center', 'border': '1px solid black'}
+            ),
+
+            # Informations
+            html.Div([
+                html.Div(className='row', children="Ruben HALIFA"),
+
+                html.Div(className='row', children=versionning),
+
+                html.Div(className='row', children=products_availability),
+            ], style={'textAlign': 'left', 'color': 'black', 'fontSize': 12}),
+        ]),
+        ], style={'background-color': '#F0F0F0', 'overflowY': 'scroll', 'height': '100vh', 'flex': '1', 'direction': 'rtl',
+                 'border-right': '1px solid black', 'margin':'0px'}),
+
     # Contents on the right side
     html.Div([
-        
+
         # Section governing the advanced search window
         dcc.Loading(id="loading_section_1", type="default", children=[
             html.Div([
                 html.Div([html.Strong("ADVANCED SEARCH")], 
-                                 style={'font-size': '24px', 'color': 'black', 'width': '100%', 
-                       'textAlign': 'center', 'margin': '0px', 'border': 'none', 'background-color': 'gray',
-                                       'display': 'flex', 'flex-direction': 'column', 'width': '100%'}),
+                                     style={'font-size': '24px', 'color': 'black', 'width': '100%', 
+                           'textAlign': 'center', 'margin': '0px', 'border': 'none', 'background-color': 'gray',
+                                           'display': 'flex', 'flex-direction': 'column', 'width': '100%'}),
                 # Dropdown for the pnns_groups_1
                 html.Div([
                     generate_dropdown(None, pnns_groups_1, "Choose a PNNS group 1", False, 'dropdown_pnns1')
@@ -688,9 +698,9 @@ app.layout = html.Div([
                     generate_slider("Salt g/100g", 'slider_salt', 100),
                     generate_slider("Macronutrients g/100g", 'slider_macronutrients', 100)
 
-                ], style={'float': 'center', 'width': '500px', 'margin':'0 auto', 'flex-direction': 'row', 'margin-bottom': '20px'}),
+                    ], style={'float': 'center', 'width': '500px', 'margin':'0 auto', 'flex-direction': 'row', 'margin-bottom': '20px'}),
 
-                # Button to reset options from the advanced search
+                    # Button to reset options from the advanced search
                 html.Div([
                     html.Button(html.Strong("Reset"), id="reset_sliders_button", n_clicks=0)
                 ], style={'float': 'center', 'margin':'0 auto', 'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'margin-bottom': '20px'}),
@@ -703,9 +713,9 @@ app.layout = html.Div([
 
                 # Horizontale line
                 html.Hr(style={'border-top': '4px solid black'}),  
-
+                
             ], id = 'advanced_search_div', style={'float': 'center', 'display': 'None', 'flex-direction': 'row', 
-                                                  'width': '100%', 'background-color': '#F0F0F0', 'margin-bottom': '20px'}),
+                                              'width': '100%', 'background-color': '#F0F0F0', 'margin-bottom': '20px'}),
         ]),
 
         
@@ -742,8 +752,11 @@ app.layout = html.Div([
                                            'border': '1px', 'background-color': 'lightgray', 'width': '100%', 'margin': 'auto'}),
                         html.Div([
                             html.Div([
-                                html.Img(id=f"{diet}_img_{i}", src=dash.get_asset_url('no_image.jpg'), n_clicks = 0,
+                                # dcc.Link for having the clickable action on
+                                dcc.Link( 
+                                    html.Img(id=f"{diet}_img_{i}", src=dash.get_asset_url('no_image.jpg'), n_clicks = 0,
                                          alt="No image available", style={'height': '200px', 'width': '200px'}),
+                                href=''),
                                 html.Div(id=f"{diet}_div_{i}")
                             ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
                             for i in range(20)
@@ -798,8 +811,7 @@ app.layout = html.Div([
     dcc.Store(id='search_on', data=False),
     dcc.Store(id='shown_img', data={f'{diet}_img_{i}': None for diet in diets for i in range(20)}),
     
-], style={'display': 'flex', 'justify-content': 'space-between', 'margin': '0', 'padding': '0'})
-
+],id='app-container', style={'justify-content': 'space-between', 'margin': '0', 'padding': '0'})
 
 @app.callback(
     Output('sliced_file', 'data'),
@@ -1237,39 +1249,46 @@ def display_images(*args):
         
         
     elif ctx.triggered_id in ["search_bar"] + [f'{diet}_img_{i}' for diet in diets for i in range(20)]:
-        if ctx.triggered_id == ["search_bar"]:
-            df_product = data.query('product_name == @search_bar')
+        try:
+            if ctx.triggered_id == "search_bar":
+                df_product = data.query('product_name == @search_bar')
+
+            else: 
+                #shown_img_data[ctx.triggered_id]
+                url = shown_img_data[ctx.triggered_id]
+                code = get_code(url)
+                df_product = data.query('code == @code')
+
+            # We search for the product [Only one for now]
+            df_product = df_product.head(1) if df_product.shape[0] > 1 else df_product
+            df_product = mapping_nutriscore_IMG(df_product)
+
+            selected_product_img = get_image(str(df_product["code"].values[0]))
+            selected_product_title = html.Strong(f"{df_product['product_name'].values[0]}")
+            selected_product_texte = html.Div([
+                html.Div([
+                    html.Strong(f"{col}:"),
+                    f" {df_product[col].values[0]}"],
+                    style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px'}
+                )
+                for col in df_product.columns[:-1]  # Exclude the last column (nutriscore_image)
+                ] + [
+                    html.Img(
+                    src=dash.get_asset_url(str(df_product["nutriscore_score_letter"].values[0])),
+                        alt="Product Nutriscore",
+                        style={'width': '100px', 'height': '50px', 'margin-left':'10px'}
+                    ),
+                ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
+
+            pnns1 = df_product["pnns_groups_1"].values[0]
+            pnns2 = df_product["pnns_groups_2"].values[0]
             
-        else: 
-            #shown_img_data[ctx.triggered_id]
-            url = shown_img_data[ctx.triggered_id]
-            code = get_code(url)
-            df_product = data.query('code == @code')
-            
-        # We search for the product [Only one for now]
-        df_product = df_product.head(1) if df_product.shape[0] > 1 else df_product
-        df_product = mapping_nutriscore_IMG(df_product)
-        
-        selected_product_img = get_image(str(df_product["code"].values[0]))
-        selected_product_title = html.Strong(f"{df_product['product_name'].values[0]}")
-        selected_product_texte = html.Div([
-            html.Div([
-                html.Strong(f"{col}:"),
-                f" {df_product[col].values[0]}"],
-                style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px'}
-            )
-            for col in df_product.columns[:-1]  # Exclude the last column (nutriscore_image)
-            ] + [
-                html.Img(
-                src=dash.get_asset_url(str(df_product["nutriscore_score_letter"].values[0])),
-                    alt="Product Nutriscore",
-                    style={'width': '100px', 'height': '50px', 'margin-left':'10px'}
-                ),
-            ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
-                   
-        pnns1 = df_product["pnns_groups_1"].values[0]
-        pnns2 = df_product["pnns_groups_2"].values[0]
-        
+        except:
+            pnns1, pnns2 = None, None
+            selected_product_img = dash.get_asset_url("no_image.jpg")
+            selected_product_title = html.Strong("Product not found, search for another one")
+            selected_product_texte = html.Strong("Product not found, search for another one")
+                
         df = return_df(country, pnns1, pnns2).copy()
         
         title = html.Strong("BEST RECOMMENDED PRODUCTS BY CATEGORY")
@@ -1319,6 +1338,11 @@ def display_images(*args):
         graphic_gestion_style = {'display':'None'}
         selected_product_style = {'display':'None'}
         search_on = False
+        
+        images = [None] * 100
+        styles_images = [{'display':'None'}] * 100
+        textes_images = [None] * 100
+        subtitles = [None] * 5
 
     output_values = [title, *subtitles, *images, *styles_images, *textes_images, 
                      figure, graphic_gestion_style, selected_diet, selected_product_style, 
@@ -1334,7 +1358,33 @@ def display_images(*args):
             shown_img_data[key] = src
             
     print("display_images", time.time() - elapsed_time) if DEBUG else None    
-    return tuple(output_values)   
+    return tuple(output_values)
+
+@app.callback(
+    Output('arrow_button_panel', 'children'),
+    Output('left_panel', 'style'),
+    Output('left_panel_div2', 'style'),
+    
+    Input('arrow_button_panel', 'n_clicks'),
+    
+    prevent_initial_call=True,
+)
+def left_panel_display(n_clicks):
+    # To display or not the left panel
+    if n_clicks%2:
+        style_panel={'background-color': '#F0F0F0', 'overflowY': 'scroll', 'height': '100vh', 'flex': '0.1', 'direction': 'rtl',
+             'border-right': '1px solid black', 'margin':'0px'}
+        style_panel_div={'display':'None'}
+        
+        return "→", style_panel, style_panel_div 
+    
+    else:
+        style_panel={'background-color': '#F0F0F0', 'overflowY': 'scroll', 'height': '100vh', 'flex': '1', 'direction': 'rtl',
+             'border-right': '1px solid black', 'margin':'0px'}
+        style_panel_div={'display':'block'}
+        
+        return "←", style_panel, style_panel_div
+    
 
 # Run the app
 if __name__ == '__main__':

@@ -1,0 +1,13 @@
+/* Default styles for screens wider than 768 pixels (considered as desktop) */
+#app-container {
+    display: flex;
+    flex-direction: row;
+}
+
+/* Styles for screens with a width of 768 pixels or less (considered as mobile) */
+@media only screen and (max-width: 769px) {
+    #app-container {
+        display: 'flex';
+        flex-direction: column;
+    }
+}
