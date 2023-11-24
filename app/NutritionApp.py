@@ -1,489 +1,15 @@
 ﻿import dash
-from dash import Dash, html, dash_table, dcc, callback, Output, Input, State, ctx, Patch
-from dash.dash_table.Format import Format, Scheme
+from dash import Dash, html, dcc, Output, Input, State, ctx
 import pandas as pd
-import plotly
-import plotly.express as px
-import plotly.subplots as sp
-from plotly.subplots import make_subplots
-import copy
-import os
 import math
 from io import StringIO
 import time
-import json
 
-# Get the directory of the script
-script_dir = os.path.dirname(os.path.abspath(__file__))
-
-# Go up one level to the parent directory (assuming the script is in the 'app' directory)
-app_dir = os.path.dirname(script_dir)
-
-# Define the path to the file in the /files directory
-file_path = os.path.join(app_dir, 'files', 'cleaned_data.csv')
-
-# Now you can use the file_path to access your file
-with open(file_path, 'r') as file:
-    data = pd.read_csv(file_path, sep = "\t")
-
-
-def pnns_groups_options(df, country, pnns_groups_num, pnns1=None):
-    if pnns_groups_num == "pnns_groups_1":
-        pnns_groups = df[pnns_groups_num].unique()
-    elif pnns_groups_num == "pnns_groups_2":
-        pnns_groups = df.loc[df.pnns_groups_1 == pnns1, pnns_groups_num].unique()
-
-    # Create a DataFrame with counts for each pnns group
-    counts_df = data.query('countries_en.str.contains(@country)').groupby(pnns_groups_num).size().reset_index(name='count')
-
-    # Merge the counts with the unique pnns groups
-    merged_df = pd.DataFrame({pnns_groups_num: pnns_groups})
-    merged_df = pd.merge(merged_df, counts_df, on=pnns_groups_num, how='left').fillna(0)
-    
-    merged_df.sort_values(by=pnns_groups_num, inplace=True)
-    
-    # Create the pnns_groups_options list
-    pnns_groups_options = [
-        {
-            'label': f"{pnns} [{count} products]",
-            'value': pnns
-        }
-        for pnns, count in zip(merged_df[pnns_groups_num], merged_df['count'])
-    ]
-
-    return pnns_groups_options
-
-# Function to generate a RangeSlider
-def generate_slider(title, id, max_value):
-    return html.Div([title,
-                     dcc.RangeSlider(0, max_value, 1, value=[0, max_value],
-                                    marks={0: "0", max_value: str(max_value)},
-                                    id=id,
-                                    tooltip={"placement": "bottom", "always_visible": True})
-                     ], style={'textAlign': 'center', 'color': 'black', 'fontSize': 15})
-
-
-# Function to generate a DropDown
-def generate_dropdown(value, options, placeholder, multi, id, clearable = True):
-    return dcc.Dropdown(
-                value=value,
-                options=options,
-                style={'fontFamily': 'monospace', 'align-items': 'center', 'justify-content': 'center', 
-                       'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'width': '100%', 'cursor': 'pointer'},
-                placeholder=placeholder,
-                multi=multi,
-                id=id,
-                clearable=clearable,
-            )
-
-def empty_figure():
-    """
-    Function returning an empty figure with all the same template
-    """
-    fig = px.strip()
-    # Set the background    
-    fig.update_layout(
-    plot_bgcolor='white'
-    )
-    fig.update_xaxes(
-        mirror=True,
-        ticks='outside',
-        showline=True,
-        linecolor='black',
-        gridcolor='lightgrey'
-    )
-    fig.update_yaxes(
-        mirror=True,
-        ticks='outside',
-        showline=True,
-        linecolor='black',
-        gridcolor='lightgrey'
-    )
-    fig.add_annotation(text="No data to show", x=0.5, y=0.5, showarrow=False,
-                        font=dict(color="Black", size=20))
-    return fig
-
-def figure_radar_plot(df_slice, nutrients, nutrients_choice, df_selected_products):
-
-    # We retrieve the mediane for the nutrients
-    if len(nutrients_choice) == 0 :
-        median_df = df_slice[nutrients].median()
-    else:
-        median_df = df_slice[nutrients_choice].median()
-    
-    # To put Energy and the nutrients on the same graph but with differents scales
-    #figure = make_subplots(specs=[[{"secondary_y": True}]])
-
-    # We repeat the first at the end to close the radarplot
-    values = median_df.values.tolist() + [median_df.values[0]]
-    columns = median_df.index.tolist() + [median_df.index[0]]
-    
-    #figure_energy = px.line_polar(r = values_energy, theta = columns, markers=True)
-    figure_radar = px.line_polar(r = values, theta = columns, markers=True)
-
-    # To fill the plot
-    figure_radar.update_traces(fill='toself',
-                               line_color = "green",
-                               name=f"Median of {df_slice.shape[0]} products",
-                               showlegend = True)
-    
-    # Update radial axis range
-    #figure_radar.update_polars(radialaxis=dict(range=[0, 100]))
-    
-    nb_selected_product = 0
-    
-    # if product(s) have been selected
-    if df_selected_products is not None:
-        if not isinstance(df_selected_products, pd.DataFrame):
-            # Assuming df_selected_products is a JSON-formatted string
-            df_selected_products = pd.read_json(StringIO(df_selected_products), orient='split')
-
-        if df_selected_products.shape[0] > 0 :
-            nb_selected_product = df_selected_products.shape[0]
-
-            # Differents blue colors
-            blue_colors = [
-                "#0077cc", "#00b8ff", 
-                "#009688", "#35a79c", "#54b2a9", "#65c3ba", "#83d0c9",
-                "#daf8e3", "#97ebdb", "#00c2c7", "#0086ad", "#005582",
-                "#77aaff", "#99ccff", "#bbeeff", "#5588ff", "#3366ff",
-            ]
-
-            # We add a radarplot trace for each
-            for i in range(df_selected_products.shape[0]):
-
-                if len(nutrients_choice) == 0 :
-                    mask = df_selected_products.iloc[i][nutrients]
-                else:
-                    mask = df_selected_products.iloc[i][nutrients_choice]
-
-                # We get the values
-                values = mask.values.tolist() + [mask.values[0]]
-                columns = mask.index.tolist() + [mask.index[0]]
-
-                # We create the new trace
-                selected_radar_figure = px.line_polar(r = values, theta = columns, markers=True)
-
-                selected_radar_figure.update_traces(fill='toself')
-                selected_radar_figure.update_traces(fill='toself',
-                                                    line_color = blue_colors[i],
-                                                    showlegend = True)
-
-                full_name = df_selected_products.iloc[i].product_name
-
-                truncated_name = full_name[:20]
-                selected_radar_figure.update_traces(name = truncated_name,
-                                          legendgroup = full_name)#,
-    #                                      hovertemplate = full_name)
-
-                # We add it to the main figure_radar
-                figure_radar.add_trace(selected_radar_figure.data[0])
-
-    # To change the order and put the Median on top
-    figure_radar.data = figure_radar.data[::-1]
-    figure_radar.update_layout(
-        margin=dict(l=20, r=20, t=20, b=20),
-        font=dict(color="black"),
-    )
-    
-    taille = 1 if nb_selected_product < 3 else nb_selected_product/4
-    
-    figure_radar.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.1*taille, xanchor="left", x=0.2,
-                                          font=dict(size=10),itemwidth=30))
-    # We change the hovertemplate names
-    figure_radar.update_traces(
-        hovertemplate='<br>%{theta} = %{r}' # nutrient = value
-        )
-        # Set the background  
-    figure_radar.update_polars(bgcolor='white')
-    figure_radar.update_layout(
-        font_size = 15,
-        polar = dict(
-          bgcolor = "rgb(223, 223, 223)",
-          angularaxis = dict(
-            linewidth = 3,
-            showline=True,
-            linecolor='black'
-          ),
-          radialaxis = dict(
-            side = "counterclockwise",
-            showline = True,
-            linewidth = 2,
-            gridcolor = "white",
-            gridwidth = 2,
-          )
-        ),
-    )
-    
-    return figure_radar
-        
-        
-        
-def create_figure_products(df, list_nutrients, selected_nutrients, selected_graphical_type, df_selected_products):
-    """
-        V2 of the function creating the different graphics used in the dashboard
-        Transitioning from a boxplot to a violinplot
-        Each figures will have the full page
-        Less conflicts, better integration in the dashboard.
-        
-        df: dataframe containing the data to project
-        list_nutrients: columns projected (nutrients) 
-        selected_nutrients: selected columns from the list_nutrients
-        selected_graphical_type: type of graphic that will be projected
-        selected_products: selected products that will be highlighted
-    """
-    
-    # To put Energy and the nutrients on the same graph but with differents scales
-    figure = make_subplots(specs=[[{"secondary_y": True}]])
-    
-    selected_nutrients = [] if selected_nutrients == None else selected_nutrients
-
-    if selected_graphical_type in ["Distribution", "Products"]:
-        if selected_graphical_type == "Distribution": 
-            figure_energy = px.violin(df, y="energy_100g", box=False) 
-            figure_others = (px.violin(df, y=selected_nutrients, box=False) 
-                             if len(selected_nutrients) > 0 
-                             else px.violin(df, y=list_nutrients, box=False))
-
-            figure_others.update_traces(width = 1)
-
-        elif selected_graphical_type == "Products":
-            figure_energy = px.strip(df, y="energy_100g") 
-            figure_others = (px.strip(df, y=selected_nutrients) 
-                                 if len(selected_nutrients) > 0 
-                                 else px.strip(df, y=list_nutrients))  
-            
-        figure_energy['data'][0]['customdata'] = [name for name in df['product_name']]
-        if len(selected_nutrients) > 0 :
-            figure_others['data'][0]['customdata'] = [name for name in df['product_name']] * len(selected_nutrients)
-        else:
-            figure_others['data'][0]['customdata'] = [name for name in df['product_name']] * len(nutrients)
-        
-        figure_energy.update_traces(marker = dict(color = "red"), hovertemplate='<br>Product name: %{customdata}<br>energy_100g = %{y}')
-        figure_others.update_traces(marker = dict(color = "green"), hovertemplate='<br>Product name: %{customdata}<br>%{x}: %{y}')
-                
-                         
-        if df_selected_products is not None:
-            if not isinstance(df_selected_products, pd.DataFrame):
-                # Assuming df_selected_products is a JSON-formatted string
-                df_selected_products = pd.read_json(StringIO(df_selected_products), orient='split')
-
-            figure_energy_selected = px.strip(df_selected_products, y="energy_100g") 
-            figure_others_selected = (px.strip(df_selected_products, y=selected_nutrients) 
-                                 if len(selected_nutrients) > 0 
-                                 else px.strip(df_selected_products, y=list_nutrients))
-            # Putting informations
-            figure_energy_selected['data'][0]['customdata'] = [name for name in df_selected_products['product_name']]
-            if len(selected_nutrients) > 0:
-                figure_others_selected['data'][0]['customdata'] = [name for name in df_selected_products['product_name']] * len(selected_nutrients)
-            else:
-                figure_others_selected['data'][0]['customdata'] = [name for name in df_selected_products['product_name']] * len(nutrients)
-            figure_energy_selected.update_traces(hovertemplate='<br>Product name: %{customdata}<br>energy_100g = %{y}')
-            figure_others_selected.update_traces(hovertemplate='<br>Product name: %{customdata}<br>%{x}: %{y}')
-
-        else :
-            figure_energy_selected = px.strip()
-            figure_others_selected = px.strip()
-            
-        for fig in [figure_energy_selected, figure_others_selected]:   
-            fig.update_traces(marker = dict(color = "blue"), 
-                                marker_size=8, name="Selected", 
-                                marker_line_color="black", marker_line_width=2)
-                         
-        for i in range(len(figure_energy.data)):
-            figure.add_trace(figure_energy.data[i], secondary_y=False)
-            figure.add_trace(figure_others.data[i], secondary_y=True)
-            figure.add_trace(figure_energy_selected.data[i], secondary_y=False)
-            figure.add_trace(figure_others_selected.data[i], secondary_y=True)
-
-            #
-           # if isinstance(df_selected_products, pd.DataFrame): 
-            #    figure.add_trace(figure_energy_selected.data[i], secondary_y=False)
-             #   figure.add_trace(figure_others_selected.data[i], secondary_y=True)
-
-        # Update of figure layout
-        figure.update_layout(
-            yaxis_title="g/100g",
-            title=dict(text=f'Distribution of macronutrients of selected products [{df.shape[0]}]',
-                       font=dict(size=24, color="black"), x=0.5, xanchor='center'),
-            font=dict(size=18, color="black"),
-            plot_bgcolor='white',
-        )
-
-        # Set y-axes titles and background
-        figure.update_yaxes(
-            title_text="g/100g (energy)", 
-            secondary_y=False,
-            mirror=True,
-            ticks='outside',
-            showline=True,
-            linecolor='black',
-            gridcolor='lightgrey')
-                             
-        figure.update_yaxes(
-            title_text="g/100g (nutrients)", 
-            secondary_y=True) 
-                             
-        # Set x-axe ticks
-        figure.update_xaxes(
-            ticktext=["energy_100g"] + nutrients, 
-            tickvals=[i for i in range(len(nutrients) + 1)],
-            mirror=True,
-            ticks='outside',
-            showline=True,
-            linecolor='black',
-            gridcolor='lightgrey')
-            #range = [0, 100], tickmode="sync")
-        return figure
-                
-    elif selected_graphical_type == "Radarplot":
-        return figure_radar_plot(df, list_nutrients, selected_nutrients, df_selected_products)
-    
-    # Default, but shouldn't occur
-    else:
-        return empty_figure()
-    
-
-def cache(fun):
-    cache.cache_ = {}
-
-    def inner(country, pnns1, pnns2):
-        # Check if the inputs have changed
-        inputs_changed = (
-            country not in cache.cache_ or
-            pnns1 not in cache.cache_ or
-            pnns2 not in cache.cache_
-        )
-        
-        cache_key = (country, pnns1, pnns2)
-
-        if inputs_changed or cache_key not in cache.cache_:
-            cache.cache_[cache_key] = fun(country, pnns1, pnns2)
-
-        return cache.cache_[cache_key]
-
-    return inner
-
-@cache
-def function(country, pnns1, pnns2):
-    df = data.query('countries_en.str.contains(@country)')
-
-    if pnns1:
-        df = df[df.pnns_groups_1 == pnns1]
-    if pnns2:
-        df = df[df.pnns_groups_2 == pnns2]
-
-    return df
-
-def return_df(country, pnns1 = None, pnns2 = None):
-
-    if country:
-        return function(country, pnns1, pnns2)
-
-    # Returning no data to show
-    else:
-        return None
-
-def get_image(code):
-    # Transform the code to produce the Open Food Facts image URL
-    if len(code) <= 8:
-        url = f'https://images.openfoodfacts.org/images/products/{code}/1.jpg'
-        return url
-    elif len(code) > 8:
-        code = "0"*(13 - len(code)) + code
-        url = f'https://images.openfoodfacts.org/images/products/{code[:3]}/{code[3:6]}/{code[6:9]}/{code[9:]}/1.jpg'
-        return url
-    else:
-        return None
-        
-def get_code(url):
-    # Extract the product code from the Open Food Facts image URL
-    try:
-        parts = url.split('/')
-        
-        # Short code format
-        if parts[-3] == 'products':
-            return parts[-2]
-        
-        # Long code format
-        else:
-            code = parts[-5] + parts[-4] + parts[-3] + parts[-2]
-            return code.lstrip('0')  # Remove leading zeros
-    except:
-        pass
-
-    return None
-
-def mapping_nutriscore_IMG(df):
-    """
-        Function matching the nutriscore to the letter A to E
-        Add the column nutriscore_score_letter to the dataframe
-        We loop inside the dictionnary, and change the letter if the score is inferior.
-        Until it isn't
-    """
-    nutriscore_img = {
-        "E" : ["40", "nutriscore_E.png"], 
-        "D" : ["18", "nutriscore_D.png"],
-        "C" : ["10", "nutriscore_C.png"],
-        "B" : ["2", "nutriscore_B.png"],
-        "A" : ["-1", "nutriscore_A.png"],
-    }
-    if isinstance(df, pd.DataFrame):   
-        df["nutriscore_score_letter"] = "nutriscore_E.png"
-        for letter in nutriscore_img:
-            df.loc[: ,"nutriscore_score_letter"] = df.apply(lambda x: nutriscore_img[letter][1] 
-                                                if x["nutriscore_score"] <= int(nutriscore_img[letter][0])
-                                               else x["nutriscore_score_letter"], axis = 1)
-        return df
-
-def df_sorting(diet, df = None):
-    """
-        Function sorting the dataframe
-        ascending = True
-        Descending = False
-    """
-
-    type_diet = {
-        "Healthier foods": [
-            {'column_id': 'nutriscore_score', 'direction': True},
-            {'column_id': 'fiber_100g', 'direction': False}
-        ],
-        "Low sugar foods": [
-            {'column_id': 'carbohydrates_100g', 'direction': True},
-            {'column_id': 'nutriscore_score', 'direction': True}
-        ],
-        "Protein rich foods": [
-            {'column_id': 'proteins_100g', 'direction': False},
-            {'column_id': 'nutriscore_score', 'direction': True}
-        ],
-        "Energy rich foods": [
-            {'column_id': 'energy_100g', 'direction': False},
-            {'column_id': 'nutriscore_score', 'direction': True}
-        ],
-        "Low fat foods": [
-            {'column_id': 'fat_100g', 'direction': True},
-            {'column_id': 'nutriscore_score', 'direction': True}
-        ],
-    }
-    column_id = []
-    direction = []
-    
-    df_copy = copy.deepcopy(df)
-    
-    if diet in type_diet:
-        for sorting_param in type_diet[diet]:
-            
-            column_id.append(sorting_param['column_id'])
-            direction.append(sorting_param['direction'])
-            
-        if isinstance(df, pd.DataFrame):  
-            df_copy = df_copy.sort_values(by=column_id, ascending=direction)
-    
-    if isinstance(df_copy, pd.DataFrame):
-        return df_copy
-    else: 
-        return column_id
-
+# Importing the functions
+from dash_figures import create_figure_products
+from dash_components import generate_slider, generate_dropdown
+from dash_handling import pnns_groups_options, return_df, get_image, get_code, mapping_nutriscore_IMG, df_sorting
+from dash_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
 
 ##### Initialize the app - incorporate css
 # Linked to the external CSS file 
@@ -500,7 +26,7 @@ versionning = "version: 0.6.3"
 
 DEBUG = True
 
-products_availability = "Referenced products: " + str(data.shape[0])
+products_availability = "Referenced products: " + str(get_data().shape[0])
 
 nutrients = ["fat_100g", "saturated-fat_100g", "carbohydrates_100g", "fiber_100g", "proteins_100g", "salt_100g", "macronutrients_100g"]
 
@@ -512,46 +38,15 @@ diets = ["Healthier foods", "Low sugar foods", "Protein rich foods", "Energy ric
 default_country, default_pnns1, default_pnns2, default_diet = "France", "Fruits and vegetables", "Soups", "Healthier foods" 
 default_graphic_option = "Distribution"
 
-# Options setup for dropdown of countries
-c1 = [country.split(",") for country in data.countries_en.unique()]
-c2 = [count for country in c1 for count in country]
-unique_countries = sorted(list(set(c2)))
-
-flags = {"United States":"🇺🇸", "France":"🇫🇷", "Germany":"🇩🇪", "United Kingdom":"🇬🇧"}
-
-# Generate list of unique countries
-unique_countries = [
-    {
-        'label': f"{flags[country]} {country} [{return_df(country).shape[0]} products]",
-        'value': country
-    } 
-    for country in unique_countries
-]
-
-# Generate columns with appropriate formatting for numeric columns for dash DataTable
-columns = [
-    {
-        'name': col,
-        'id': col,
-        'type': 'numeric' if pd.api.types.is_numeric_dtype(data[col]) else 'text',
-        'format': Format(precision=2, scheme=Scheme.fixed) if (pd.api.types.is_numeric_dtype(data[col]) and col in nutrients) else Format(precision=0, scheme=Scheme.fixed)
-    }
-    for col in data.columns
-    if col not in ["countries_en", "pnns_groups_1", "pnns_groups_2"]
-]
+# Generate list of unique countries and number of products
+unique_countries = products_by_countries()
 
 # Generate pnns_groups 1 and 2, and sorted
-pnns_groups_1 = sorted(data.pnns_groups_1.unique())
+pnns_groups_1 = get_pnns_groups_1()
 
-pnns_groups_2 = []
-for pnns1 in sorted(data.pnns_groups_1.unique()):
-    for pnns2 in sorted(data.loc[data.pnns_groups_1 == pnns1, 'pnns_groups_2'].unique()):
-        if pnns2 not in ['unknown', 'Alcoholic beverages']:
-            pnns_groups_2.append(pnns2)
+pnns_groups_2 = get_pnns_groups_2()
 
-pnns_groups = {}
-for pnns1 in pnns_groups_1:
-    pnns_groups[pnns1] = sorted(data.loc[data.pnns_groups_1 == pnns1, "pnns_groups_2"].unique().tolist())
+pnns_groups = get_pnns_groups()
 
 app.layout = html.Div([
     # Left side
@@ -632,8 +127,8 @@ app.layout = html.Div([
                                'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
                     ),
                 ])
-                for pnns1 in pnns_groups_options(data, default_country, "pnns_groups_1")
-                for y, pnns2 in enumerate(pnns_groups_options(data, default_country, "pnns_groups_2", pnns1["value"]))
+                for pnns1 in pnns_groups_options(default_country, "pnns_groups_1")
+                for y, pnns2 in enumerate(pnns_groups_options(default_country, "pnns_groups_2", pnns1["value"]))
             ]),
 
              dcc.Dropdown(
@@ -970,13 +465,13 @@ def click_pnns_showing(*args):
         for pnns2 in pnns_groups_2:
             output_values.append(dash.no_update)
         
-        pnns_groups_1_options = pnns_groups_options(data, country, "pnns_groups_1")
+        pnns_groups_1_options = pnns_groups_options(country, "pnns_groups_1")
         
         for pnns1 in pnns_groups_1_options:
             output_values.append(pnns1["label"])
 
         for pnns1 in pnns_groups_1_options:
-            for pnns2 in pnns_groups_options(data, country, "pnns_groups_2", pnns1["value"]):
+            for pnns2 in pnns_groups_options(country, "pnns_groups_2", pnns1["value"]):
                 if str(pnns1["value"]) != str(pnns2["value"]):
                     output_values.append(pnns2["label"])
         print("click_pnns_showing_3", time.time() - elapsed_time) if DEBUG else None
@@ -1264,13 +759,13 @@ def display_images(*args):
     elif ctx.triggered_id in ["search_bar"] + [f'{diet}_img_{i}' for diet in diets for i in range(20)]:
         try:
             if ctx.triggered_id == "search_bar":
-                df_product = data.query('product_name == @search_bar')
+                df_product = get_data().query('product_name == @search_bar')
 
             else: 
                 #shown_img_data[ctx.triggered_id]
                 url = shown_img_data[ctx.triggered_id]
                 code = get_code(url)
-                df_product = data.query('code == @code')
+                df_product = get_data().query('code == @code')
 
             # We search for the product [Only one for now]
             df_product = df_product.head(1) if df_product.shape[0] > 1 else df_product
