@@ -1125,30 +1125,40 @@ def display_images(*args):
     # dataframe preparation, only when necessary
     if ctx.triggered_id not in ['advanced_search_button', 'search_confirmation_button']:
         df = return_df(country, pnns1_chosen, pnns2_chosen)
-    
-    # If clicking on diet preference
-    if ctx.triggered_id in [f'{diet}_div' for diet in diets] + ['search_confirmation_button']:
-              
+        
+    elif ctx.triggered_id == 'search_confirmation_button':
+        df = pd.read_json(StringIO(df_slice), orient='split')
+        
+    # If clicking on diet preference or confirmed search
+    if ctx.triggered_id in [f'{diet}_div' for diet in diets] + ['search_confirmation_button']:      
         for i, diet in enumerate([diet + "_div" for diet in diets]):
-            if ctx.triggered_id == 'search_confirmation_button':
-                if diet[:-4] == dropdown_diet:
-                    selected_diet = diets[i] # To keep the selected button
-                    advanced_search_style = dash.no_update
-                    df = pd.read_json(StringIO(df_slice), orient='split')
-                    search_on = True
-                    
-            else:
-                # Add information when it is the selected diet
-                if diet == ctx.triggered_id:
-                    search_on = False
-                    selected_diet = diets[i] # To keep the selected button
-                    advanced_search_style = {'display':'None'}
+            subtitles.append(html.Strong(f"{diets[i]}"))
+            
+            if ctx.triggered_id in ['search_confirmation_button', diet]: 
+                if ctx.triggered_id == 'search_confirmation_button':
+                    if diet[:-4] == dropdown_diet:
+                        selected_diet = diets[i] # To keep the selected button
+                        advanced_search_style = dash.no_update
+                        search_on = True
+                    else: 
+                        selected_diet = None
+
+                else:
+                    # Add information when it is the selected diet
+                    if diet == ctx.triggered_id:
+                        search_on = False
+                        selected_diet = diets[i] # To keep the selected button
+                        advanced_search_style = {'display':'None'}
+                    else: 
+                        selected_diet = None
+                
+                if selected_diet != None:
                     # sort and retrieve the N best, then match the nutriscore image           
                     df_N_best = df_sorting(diets[i], df).head(n_best)
                     df_N_best = mapping_nutriscore_IMG(df_N_best)
 
                     title = html.Strong(f"BEST RECOMMENDED PRODUCTS FOR {diets[i].upper()}")
-                    subtitles.append(html.Strong(f"{diets[i]}"))
+
 
                     for _, row in df_N_best.iterrows():
 
@@ -1170,20 +1180,23 @@ def display_images(*args):
                                     style={'width': '100px', 'height': '50px', 'margin-left':'10px'}
                                 ),
                             ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'}))
+
                     # We complete
                     if df_N_best.shape[0] < 20:
                         images = images + [None] * (20 - df_N_best.shape[0])
                         styles_images = styles_images + [{'display':'None'}] * (20 - df_N_best.shape[0])
                         textes_images = textes_images + [None] * (20 - df_N_best.shape[0])
-                        
-                
-                # Add blanks when it is not the selected one
-                else:
-                    
-                    subtitles.append(html.Strong(f"{diets[i]}"))  
+                else: 
                     images = images + [None] * 20
                     styles_images = styles_images + [{'display':'None'}] * 20
                     textes_images = textes_images + [None] * 20
+                
+            # Add blanks when it is not the selected one
+            else:
+
+                images = images + [None] * 20
+                styles_images = styles_images + [{'display':'None'}] * 20
+                textes_images = textes_images + [None] * 20
         
         # Creating a figure of the data distribution 
         figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_N_best)
