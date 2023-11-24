@@ -56,7 +56,7 @@ def get_pnns_groups_2():
             if pnns2 not in ['unknown', 'Alcoholic beverages']:
                 pnns_groups_2.append(pnns2)
 
-    return get_pnns_groups_2
+    return pnns_groups_2
 
 
 def get_pnns_groups():
