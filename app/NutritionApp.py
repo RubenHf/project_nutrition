@@ -6,10 +6,10 @@ from io import StringIO
 import time
 
 # Importing the functions
-from dash_figures import create_figure_products
-from dash_components import generate_slider, generate_dropdown
-from data_handling import pnns_groups_options, return_df, get_image, get_code, mapping_nutriscore_IMG, df_sorting
-from data_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
+from app.dash_figures import create_figure_products
+from app.dash_components import generate_slider, generate_dropdown
+from app.data_handling import pnns_groups_options, return_df, get_image, get_code, mapping_nutriscore_IMG, df_sorting
+from app.data_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
 
 ##### Initialize the app - incorporate css
 # Linked to the external CSS file 
