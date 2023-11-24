@@ -342,66 +342,6 @@ def create_figure_products(df, list_nutrients, selected_nutrients, selected_grap
     else:
         return empty_figure()
     
-    
-    
-    
-    
-    
-def sorting_df(df, sort_by):
-    """
-        To sort the dataframe
-    """
-    if len(sort_by) :
-        df.sort_values(
-            [col['column_id'] for col in sort_by],
-                ascending=[
-                    col['direction'] == 'asc'
-                        for col in sort_by
-            ], inplace=True)
-
-    return df
-
-def row_coloring(dash_table, selected_row_ids, style_data_conditional):
-    """
-        To color the rows
-    """
-    for row_id in selected_row_ids:
-        style_data_conditional.append({
-            'if': {'row_index': row_id},
-            'backgroundColor': "tomato" if row_id >= (len(dash_table) / 2) else "green",
-            'color': 'white'
-        })
-    return style_data_conditional
-
-def col_coloring(sort_by, style_data_conditional):
-    """
-        To color the columns
-    """
-    if len(sort_by) > 0:    
-        for col in sort_by:
-            # insert instead of append, to place them under the row coloring
-            style_data_conditional.insert(0, {
-                'if': {'column_id': col['column_id']},
-                'backgroundColor': "#7cc6cb",
-                'fontWeight': 'bold', 
-                'color': 'black'
-            })  
-    return style_data_conditional
-
-def col_coloring_header(sort_by, style_header_conditional):
-    """
-        To color the columns
-    """
-    if len(sort_by) > 0:    
-        for col in sort_by:
-            # insert instead of append, to place them under the row coloring
-            style_header_conditional.append({
-                'if': {'column_id': col['column_id']},
-                'fontWeight': 'bold', 
-                'backgroundColor': "#7cc6cb",
-                'color': 'black'
-            })  
-    return style_header_conditional
 
 def cache(fun):
     cache.cache_ = {}
@@ -444,6 +384,7 @@ def return_df(country, pnns1 = None, pnns2 = None):
         return None
 
 def get_image(code):
+    # Transform the code to produce the Open Food Facts image URL
     if len(code) <= 8:
         url = f'https://images.openfoodfacts.org/images/products/{code}/1.jpg'
         return url
@@ -452,7 +393,25 @@ def get_image(code):
         url = f'https://images.openfoodfacts.org/images/products/{code[:3]}/{code[3:6]}/{code[6:9]}/{code[9:]}/1.jpg'
         return url
     else:
-        print("No IMG")
+        return None
+        
+def get_code(url):
+    # Extract the product code from the Open Food Facts image URL
+    try:
+        parts = url.split('/')
+        
+        # Short code format
+        if parts[-3] == 'products':
+            return parts[-2]
+        
+        # Long code format
+        else:
+            code = parts[-5] + parts[-4] + parts[-3] + parts[-2]
+            return code.lstrip('0')  # Remove leading zeros
+    except:
+        pass
+
+    return None
 
 def mapping_nutriscore_IMG(df):
     """
@@ -468,19 +427,19 @@ def mapping_nutriscore_IMG(df):
         "B" : ["2", "nutriscore_B.png"],
         "A" : ["-1", "nutriscore_A.png"],
     }
-       
-    df["nutriscore_score_letter"] = "nutriscore_E.png"
-    for letter in nutriscore_img:
-        df["nutriscore_score_letter"] = df.apply(lambda x: nutriscore_img[letter][1] 
-                                            if x["nutriscore_score"] <= int(nutriscore_img[letter][0])
-                                           else x["nutriscore_score_letter"], axis = 1)
-    return df
+    if isinstance(df, pd.DataFrame):   
+        df["nutriscore_score_letter"] = "nutriscore_E.png"
+        for letter in nutriscore_img:
+            df.loc[: ,"nutriscore_score_letter"] = df.apply(lambda x: nutriscore_img[letter][1] 
+                                                if x["nutriscore_score"] <= int(nutriscore_img[letter][0])
+                                               else x["nutriscore_score_letter"], axis = 1)
+        return df
 
 def df_sorting(diet, df = None):
     """
-    Function sorting the dataframe
-    ascending = True
-    Descending = False
+        Function sorting the dataframe
+        ascending = True
+        Descending = False
     """
 
     type_diet = {
@@ -508,20 +467,22 @@ def df_sorting(diet, df = None):
     column_id = []
     direction = []
     
-    df = copy.copy(df)
+    df_copy = copy.deepcopy(df)
     
     if diet in type_diet:
         for sorting_param in type_diet[diet]:
             
             column_id.append(sorting_param['column_id'])
             direction.append(sorting_param['direction'])
+            
         if isinstance(df, pd.DataFrame):  
-            df.sort_values(by=column_id, ascending=direction, inplace=True)
+            df_copy = df_copy.sort_values(by=column_id, ascending=direction)
     
-    if isinstance(df, pd.DataFrame):
-        return df 
+    if isinstance(df_copy, pd.DataFrame):
+        return df_copy
     else: 
         return column_id
+
 
 
 ##### Initialize the app - incorporate css
@@ -533,7 +494,7 @@ server = app.server
 
 app.title = 'Nutrition app'
 
-versionning = "version: 0.6.1"
+versionning = "version: 0.6.2"
 
 DEBUG = False
 
@@ -606,7 +567,7 @@ app.layout = html.Div([
         # Horizontale line
         html.Hr(style={'border-top': '4px solid black'}),  
         
-                # Dropdown for the countries
+            # Dropdown for the countries
         html.Div([
             generate_dropdown(default_country, unique_countries, "Choose a country", False, 'dropdown_country', False)
         ], style={'margin': '0 auto', 'border': '1px solid black'}),
@@ -620,10 +581,10 @@ app.layout = html.Div([
         html.Div([
             html.Button(
                     "Advanced search 🔍",
-                    id="advanced_search",
+                    id="advanced_search_button",
                     n_clicks=0,
                     style={'align-items': 'center', 'justify-content': 'center', 'border': '1px solid black',
-                        'font-size': '15px', 'color': 'black', 'width': '450px', 
+                        'font-size': '15px', 'color': 'black', 'width': '100%', 
                            'textAlign': 'center', 'margin': '0px', 'background-color': 'white'}
                 )
         ], style={'margin': '0 auto', 'margin-bottom': '20px'}),
@@ -634,14 +595,14 @@ app.layout = html.Div([
                     pnns1["label"],
                     id=str(pnns1["value"]),
                     n_clicks=0,
-                    style={'font-size': '16px', 'color': 'black', 'width': '450px', 
+                    style={'font-size': '16px', 'color': 'black', 'width': '100%', 
                            'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
                 ),
                 html.Button(
                     pnns2["label"],
                     id=str(pnns2["value"]),
                     n_clicks=0,
-                    style={'font-size': '10px', 'color': 'black', 'width': '450px', 'display':'none',
+                    style={'font-size': '10px', 'color': 'black', 'width': '100%', 'display':'none',
                            'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
                 ),
             ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'}) 
@@ -650,7 +611,7 @@ app.layout = html.Div([
                     pnns1["label"],
                     id=str(pnns1["value"]),
                     n_clicks=0,
-                    style={'font-size': '16px', 'color': 'black', 'width': '450px', 
+                    style={'font-size': '16px', 'color': 'black', 'width': '100%', 
                            'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
                 )
             if str(pnns1["value"]) == str(pnns2["value"]) else
@@ -659,13 +620,28 @@ app.layout = html.Div([
                     pnns2["label"],
                     id=str(pnns2["value"]),
                     n_clicks=0,
-                    style={'font-size': '10px', 'color': 'black', 'width': '450px', 'display':'none', 
+                    style={'font-size': '10px', 'color': 'black', 'width': '100%', 'display':'none', 
                            'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
                 ),
             ])
             for pnns1 in pnns_groups_options(data, default_country, "pnns_groups_1")
             for y, pnns2 in enumerate(pnns_groups_options(data, default_country, "pnns_groups_2", pnns1["value"]))
         ]),
+        
+         dcc.Dropdown(
+            id='dropdown_number_product',
+            options=[
+                {'label': 'Displaying 5 products', 'value': 5},
+                {'label': 'Displaying 10 products', 'value': 10},
+                {'label': 'Displaying 15 products', 'value': 15},
+                {'label': 'Displaying 20 products', 'value': 20},
+            ],
+            clearable=False,
+            value=10,  # Set the default value
+            style={'font-size': '20px', 'color': 'black',  
+                   'textAlign': 'center', 'border': '1px solid black'}
+        ),
+        
         # Informations
         html.Div([
             html.Div(className='row', children="Ruben HALIFA"),
@@ -674,176 +650,142 @@ app.layout = html.Div([
 
             html.Div(className='row', children=products_availability),
         ], style={'textAlign': 'left', 'color': 'black', 'fontSize': 12}),
-    ], style={'background-color': '#F0F0F0'}),
+    ], style={'background-color': '#F0F0F0', 'overflowY': 'scroll', 'height': '100vh', 'flex': '1', 'direction': 'rtl'}),
     
     # Contents on the right side
     html.Div([
         
         # Section governing the advanced search window
-        html.Div([
-            html.Div([html.Strong("ADVANCED SEARCH")], 
-                             style={'font-size': '24px', 'color': 'black', 'width': '100%', 
-                   'textAlign': 'center', 'margin': '0px', 'border': 'none', 'background-color': 'gray',
-                                   'display': 'flex', 'flex-direction': 'column', 'width': '100%'}),
-            # Dropdown for the pnns_groups_1
+        dcc.Loading(id="loading_section_1", type="default", children=[
             html.Div([
-                generate_dropdown(None, pnns_groups_1, "Choose a PNNS group 1", False, 'dropdown_pnns1')
-            ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
-
-            # Dropdown for the pnns_groups_2
-            html.Div([
-                generate_dropdown(None, [], "Choose a PNNS group 2", False, 'dropdown_pnns2')
-            ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
-
-            # Dropdown for the diet
-            html.Div([
-                generate_dropdown("Healthier foods", diets, "Choose a nutritious plan", False, 'dropdown_diet', False)
-            ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
-
-            # Sliders controling which products we show
-            html.Div([
-                generate_slider("Energy kcal/100g", 'slider_energy', 3880),
-                generate_slider("Fat g/100g", 'slider_fat', 100),
-                generate_slider("Saturated_fat g/100g", 'slider_saturated', 100),
-                generate_slider("Carbohydrates g/100g", 'slider_carbohydrates', 100),
-                generate_slider("Fiber g/100g", 'slider_fiber', 100),
-                generate_slider("Proteins g/100g", 'slider_proteins', 100),
-                generate_slider("Salt g/100g", 'slider_salt', 100),
-                generate_slider("Macronutrients g/100g", 'slider_macronutrients', 100)
-
-            ], style={'float': 'center', 'width': '500px', 'margin':'0 auto', 'flex-direction': 'row', 'margin-bottom': '20px'}),
-            
-            # Button to reset options from the advanced search
-            html.Div([
-                html.Button(html.Strong("Reset"), id="reset_sliders_button", n_clicks=0)
-            ], style={'float': 'center', 'margin':'0 auto', 'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'margin-bottom': '20px'}),
-            
-            # Button to confirm the search 
-            html.Div([
-                html.Button("Search", id="search_confirmation_button", n_clicks=0, style={'width': '200px'}),
-            ], style={'float': 'center', 'font-size': '12px', 'color': 'black', 'width': '200px', 'margin':'0 auto', 
-                       'textAlign': 'center', 'border': '1px solid black', 'background-color': 'lightgray'}),
-            
-            # Horizontale line
-            html.Hr(style={'border-top': '4px solid black'}),  
-            
-            html.Div([
-                html.Div(id = "advanced_search_div_children"),
-                # RadioItems of graphic option
+                html.Div([html.Strong("ADVANCED SEARCH")], 
+                                 style={'font-size': '24px', 'color': 'black', 'width': '100%', 
+                       'textAlign': 'center', 'margin': '0px', 'border': 'none', 'background-color': 'gray',
+                                       'display': 'flex', 'flex-direction': 'column', 'width': '100%'}),
+                # Dropdown for the pnns_groups_1
                 html.Div([
-                    dcc.RadioItems(
-                        value=default_graphic_option,
-                        options=[
+                    generate_dropdown(None, pnns_groups_1, "Choose a PNNS group 1", False, 'dropdown_pnns1')
+                ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
+
+                # Dropdown for the pnns_groups_2
+                html.Div([
+                    generate_dropdown(None, [], "Choose a PNNS group 2", False, 'dropdown_pnns2')
+                ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
+
+                # Dropdown for the diet
+                html.Div([
+                    generate_dropdown("Healthier foods", diets, "Choose a nutritious plan", False, 'dropdown_diet', False)
+                ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
+
+                # Sliders controling which products we show
+                html.Div([
+                    generate_slider("Energy kcal/100g", 'slider_energy', 3880),
+                    generate_slider("Fat g/100g", 'slider_fat', 100),
+                    generate_slider("Saturated_fat g/100g", 'slider_saturated', 100),
+                    generate_slider("Carbohydrates g/100g", 'slider_carbohydrates', 100),
+                    generate_slider("Fiber g/100g", 'slider_fiber', 100),
+                    generate_slider("Proteins g/100g", 'slider_proteins', 100),
+                    generate_slider("Salt g/100g", 'slider_salt', 100),
+                    generate_slider("Macronutrients g/100g", 'slider_macronutrients', 100)
+
+                ], style={'float': 'center', 'width': '500px', 'margin':'0 auto', 'flex-direction': 'row', 'margin-bottom': '20px'}),
+
+                # Button to reset options from the advanced search
+                html.Div([
+                    html.Button(html.Strong("Reset"), id="reset_sliders_button", n_clicks=0)
+                ], style={'float': 'center', 'margin':'0 auto', 'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'margin-bottom': '20px'}),
+
+                # Button to confirm the search 
+                html.Div([
+                    html.Button("Search", id="search_confirmation_button", n_clicks=0, style={'width': '200px'}),
+                ], style={'float': 'center', 'font-size': '12px', 'color': 'black', 'width': '200px', 'margin':'0 auto', 
+                           'textAlign': 'center', 'border': '1px solid black', 'background-color': 'lightgray'}),
+
+                # Horizontale line
+                html.Hr(style={'border-top': '4px solid black'}),  
+
+            ], id = 'advanced_search_div', style={'float': 'center', 'display': 'None', 'flex-direction': 'row', 
+                                                  'width': '100%', 'background-color': '#F0F0F0', 'margin-bottom': '20px'}),
+        ]),
+
+        
+        dcc.Loading(id="loading_section_2", type="default", children=[
+            html.Div([
+
+                # To display a selected product at the top
+
+                html.Div(id='selected_product_style', style={'display':'None'}, children=[
+                    html.Div(id='selected_product_title',  
+                        style={'font-size': '24px', 'color': 'black', 'width': '100%', 
+                           'textAlign': 'center', 'margin': '0px', 'border': 'none', 'background-color': 'gray',
+                            'display': 'flex', 'flex-direction': 'column', 'width': '100%'}),
+                            
+                    html.Div([
+                        html.Img(id='selected_product_img', src=dash.get_asset_url('no_image.jpg'), 
+                            alt="No image available", style = {'height':'450px', 'width':'450px'}),
+                        html.Div(id='selected_product_texte')
+                    ], style={'flex-direction': 'row', 'width': '100%'})
+
+                ]),
+
+                # To display the list of products
+
+                html.Div(id='images_title', 
+                                 style={'font-size': '24px', 'color': 'black', 'width': '100%', 
+                       'textAlign': 'center', 'margin': '0px', 'border': 'none', 'background-color': 'gray',
+                                           'display': 'flex', 'flex-direction': 'column', 'width': '100%'}),
+
+                html.Div([
+                    html.Div([
+                        html.Button(children=f"{diet}", id=f"{diet}_div", n_clicks=0,
+                                    style={'font-size': '16px', 'color': 'black', 'textAlign': 'left', 'margin': '0px',
+                                           'border': '1px', 'background-color': 'lightgray', 'width': '100%', 'margin': 'auto'}),
+                        html.Div([
+                            html.Div([
+                                html.Img(id=f"{diet}_img_{i}", src=dash.get_asset_url('no_image.jpg'), n_clicks = 0,
+                                         alt="No image available", style={'height': '200px', 'width': '200px'}),
+                                html.Div(id=f"{diet}_div_{i}")
+                            ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
+                            for i in range(20)
+                        ], style={'display': 'flex', 'flex-direction': 'row', 'overflowX': 'scroll'})
+                        # Horizontal line
+                    ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
+                    for diet in diets
+                ]),
+
+                html.Div(id='graphic_gestion', style={'display': 'None'}, children=[
+                    # RadioItems of graphic option
+                    html.Div([
+                        dcc.RadioItems(
+                            value=default_graphic_option,
+                            options=[
                                 {'label': label, 'value': label} 
-                                 for label in ['Radarplot', 'Distribution', 'Products']],
-                        inline=True,
-                        id='check_list_graph_search',
-                        style = {'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'width': '100%'})
-                ], style={'margin': 'auto'}),
+                                for label in ['Radarplot', 'Distribution', 'Products']
+                            ],
+                            inline=True,
+                            id='check_list_graph_img',
+                            style={'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'width': '100%'}
+                        )
+                    ], style={'margin': 'auto'}),
 
-                # Dropdown for the macronutrient
-                html.Div([
-                    generate_dropdown(None, nutrients, "Choose nutrients", True, 'dropdown_nutrients_search')
-                ], style={'margin': '0 auto'}),
+                    # Dropdown for the macronutrient choice
+                    html.Div([
+                        generate_dropdown(None, nutrients, "Choose nutrients", True, 'dropdown_nutrients_img')
+                    ], style={'margin': '0 auto'}),
 
-                # Figure of macronutriments
-                html.Div([
-                        dcc.Graph(id="graph_products_search",
-                                 style = {'height': '600px', 'width': '100%', 'float': 'left'}),
+                    # Figure of macronutriments
+                    html.Div([
+                        dcc.Graph(id="graph_products_img", style={'height': '600px', 'width': '100%', 'float': 'center'}),
                     ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
-                ],id = 'advanced_search_div_graph', style={'display':'None'}),
-                
-        ], id = 'advanced_search_div', style={'float': 'center', 'display': 'None', 'flex-direction': 'row', 
-                                              'width': '100%', 'background-color': '#F0F0F0', 'margin-bottom': '20px'}),
-        
-        # Buttons for diet section
-        html.Div([
-            html.Div([html.Strong("BEST RECOMMENDED PRODUCTS BY CATEGORY")], 
-                             style={'font-size': '24px', 'color': 'black', 'width': '100%', 
-                   'textAlign': 'center', 'margin': '0px', 'border': 'none', 'background-color': 'gray',
-                                   'display': 'flex', 'flex-direction': 'column', 'width': '100%'}),
-        html.Div([ 
-            html.Div([
-                html.Button(
-                    diet,
-                    id=f"{diet}_button",
-                    n_clicks=0,
-                    style={'font-size': '16px', 'color': 'black', 'width': '100%', 
-                           'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'lightgray'}
-                ),
-                html.Div([
-                    html.Div(id=f"{diet}_img{i}", style={'width': '150px', 'height': '250px'})
-                    for i in range(5)
-                ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'})
-            ])
-            for diet in diets])
-        ], style={'display': 'None', 'flex-direction': 'row', 'width': '100%'},  id='diet_buttons_div'),
-        
-        # Contents inside one diet section
-        html.Div([
-            # Pictures and description
-            html.Div(id="diet_inside_images_div"),
+                ]),
+
+
+            ], style={'display': 'block', 'flex-direction': 'row', 'width': '100%'},  id='images_gestion')
+        ]),
+
             
-            # Horizontale line
-            html.Hr(style={'border-top': '4px solid black'}), 
-            
-            # RadioItems of graphic option
-            html.Div([
-                dcc.RadioItems(
-                    value=default_graphic_option,
-                    options=[
-                            {'label': label, 'value': label} 
-                             for label in ['Radarplot', 'Distribution', 'Products']],
-                    inline=True,
-                    id='check_list_graph',
-                    style = {'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'width': '100%'})
-            ], style={'margin': 'auto'}),
-        
-            # Dropdown for the macronutrient
-            html.Div([
-                generate_dropdown(None, nutrients, "Choose nutrients", True, 'dropdown_nutrients')
-            ], style={'margin': '0 auto'}),
-            
-            # Figure of macronutriments
-            html.Div([
-                    dcc.Graph(id="graph_macronutrients",
-                             style = {'height': '600px', 'width': '100%', 'float': 'left'}),
-                ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
-        ], style={'display': 'None', 'flex-direction': 'row', 'width': '100%'}, id='diet_inside_buttons_div'),
-        
-        # Contents inside the product section
-        html.Div([
-            # Pictures and description
-            html.Div(id="selected_products"),
-            
-            # Horizontale line
-            html.Hr(style={'border-top': '4px solid black'}), 
-            
-            # RadioItems of graphic option
-            html.Div([
-                dcc.RadioItems(
-                    value=default_graphic_option,
-                    options=[
-                            {'label': label, 'value': label} 
-                             for label in ['Radarplot', 'Distribution', 'Products']],
-                    inline=True,
-                    id='check_list_graph_product',
-                    style = {'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'width': '100%'})
-            ], style={'margin': 'auto'}),
-        
-            # Dropdown for the macronutrient
-            html.Div([
-                generate_dropdown(None, nutrients, "Choose nutrients", True, 'dropdown_nutrients_product')
-            ], style={'margin': '0 auto'}),
-            
-            # Figure of macronutriments
-            html.Div([
-                    dcc.Graph(id="graph_products",
-                             style = {'height': '600px', 'width': '100%', 'float': 'left'}),
-                ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
-        ], style={'display': 'None', 'flex-direction': 'row', 'width': '100%'}, id='selected_products_div'),
-        
-    ], style={'flex-direction': 'row', 'width': '100%', 'background-color': '#F0F0F0'}),
+    ], style={'flex-direction': 'row', 'width': '100%', 'background-color': '#F0F0F0', 
+              'overflowY': 'scroll', 'height': '100vh', 'flex': '2'}),
     
     dcc.Store(id='sliced_file', data=None),
     dcc.Store(id='personnalized_sorting', data=None),
@@ -853,6 +795,8 @@ app.layout = html.Div([
     dcc.Store(id='initialization_graph', data = False),
     dcc.Store(id='pnns1_chosen', data=None),
     dcc.Store(id='pnns2_chosen', data=None),
+    dcc.Store(id='search_on', data=False),
+    dcc.Store(id='shown_img', data={f'{diet}_img_{i}': None for diet in diets for i in range(20)}),
     
 ], style={'display': 'flex', 'justify-content': 'space-between', 'margin': '0', 'padding': '0'})
 
@@ -862,16 +806,18 @@ app.layout = html.Div([
     
     *[Input(f'{slide}', 'value') for slide in slider_trigger],
     
-    State('dropdown_country','value'),
-    State('dropdown_pnns1','value'),
-    State('dropdown_pnns2','value'),
+    Input('dropdown_country','value'),
+    Input('dropdown_pnns1','value'),
+    Input('dropdown_pnns2','value'),
+    
+    Input('advanced_search_button', 'n_clicks'),
     
     prevent_initial_call=True,
 )
 
 def data_slicing(slide_energy, slide_fat, slide_sat_fat, slide_carbs, 
                  slide_fiber, slide_prot, slide_salt, slide_macro,
-                 country, pnns1_chosen, pnns2_chosen,):
+                 country, pnns1_chosen, pnns2_chosen, clicks):
 
     sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
     elapsed_time = time.time() if DEBUG else None
@@ -883,9 +829,8 @@ def data_slicing(slide_energy, slide_fat, slide_sat_fat, slide_carbs,
     # It follow the same path for all
     df = return_df(country, pnns1_chosen, pnns2_chosen)
 
-    if ctx.triggered_id in slider_trigger:
-        for nutrient, slide in zip(["energy_100g"] + nutrients, sliders):
-            df = df[(df[nutrient] >= slide[0]) & (df[nutrient] <= slide[1])]
+    for nutrient, slide in zip(["energy_100g"] + nutrients, sliders):
+        df = df[(df[nutrient] >= slide[0]) & (df[nutrient] <= slide[1])]
     
     # Transform to json format
     df = df.to_json(orient='split')
@@ -898,6 +843,7 @@ def data_slicing(slide_energy, slide_fat, slide_sat_fat, slide_carbs,
     Output('dropdown_country','value'),
     
     Input('dropdown_country','value'),
+    prevent_initial_call=True,
 )
 
 # We define the countries list
@@ -939,6 +885,7 @@ def search_bar_option_def(country):#, pnns1_chosen, pnns2_chosen):
     print("search_bar_option_def", time.time() - elapsed_time) if DEBUG else None
     return search_bar_option
 
+
 @app.callback(
     *[Output(f'{pnns2}', 'style') for pnns2 in pnns_groups_2],
     *[Output(f'{pnns1}', 'children') for pnns1 in pnns_groups_1],
@@ -956,10 +903,10 @@ def search_bar_option_def(country):#, pnns1_chosen, pnns2_chosen):
 def click_pnns_showing(*args):
     elapsed_time = time.time() if DEBUG else None
     output_values = []
-    visible = {'font-size': '10px', 'color': 'black', 'width': '450px', 'display':'block', 
+    visible = {'font-size': '10px', 'color': 'black', 'width': '100%', 'display':'block', 
               'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color':'#C5C5C5'}
     
-    clicked_on = {'font-size': '16px', 'color': 'black', 'width': '450px', 'display':'block', 
+    clicked_on = {'font-size': '16px', 'color': 'black', 'width': '100%', 'display':'block', 
               'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color':'#C5C5C5'}
     
     style_search_div = {'display': 'None'}
@@ -981,6 +928,8 @@ def click_pnns_showing(*args):
                     output_values.append(visible)
                 else:
                     output_values.append({'display': 'none'})
+        
+        print("click_pnns_showing_1", time.time() - elapsed_time) if DEBUG else None
     
     # When a pnns_groups_2 was clicked on
     elif ctx.triggered_id in pnns_groups_2:
@@ -999,7 +948,8 @@ def click_pnns_showing(*args):
                     else:
                         output_values.append(visible)
                 else: 
-                    output_values.append(dash.no_update)          
+                    output_values.append(dash.no_update)  
+        print("click_pnns_showing_2", time.time() - elapsed_time) if DEBUG else None        
     
     # The country was change, we are modifying the title
     if ctx.triggered_id == 'dropdown_country': 
@@ -1017,6 +967,7 @@ def click_pnns_showing(*args):
             for pnns2 in pnns_groups_options(data, country, "pnns_groups_2", pnns1["value"]):
                 if str(pnns1["value"]) != str(pnns2["value"]):
                     output_values.append(pnns2["label"])
+        print("click_pnns_showing_3", time.time() - elapsed_time) if DEBUG else None
 
     else:
         for pnns1 in pnns_groups_1:
@@ -1028,6 +979,7 @@ def click_pnns_showing(*args):
 
                     else: 
                         output_values.append(dash.no_update)
+        print("click_pnns_showing_4", time.time() - elapsed_time) if DEBUG else None
     
     print("click_pnns_showing", time.time() - elapsed_time) if DEBUG else None
     
@@ -1035,276 +987,6 @@ def click_pnns_showing(*args):
     output_values.append(pnns1_chosen)
     output_values.append(pnns2_chosen)
     return tuple(output_values)
-
-@app.callback(
-    *[Output(f'{diet}_img{i}', 'children') for diet in diets for i in range(5)],
-    Output("diet_inside_buttons_div", 'style', allow_duplicate=True),
-    Output("diet_buttons_div", 'style', allow_duplicate=True),
-    Output("advanced_search_div", 'style', allow_duplicate=True),
-    
-    Input('pnns1_chosen', 'data'),
-    Input('pnns2_chosen', 'data'),
-    Input('dropdown_country','value'),
-    
-    prevent_initial_call=True,
-)
-def images_showing(pnns1_chosen, pnns2_chosen, country):
-    elapsed_time = time.time() if DEBUG else None
-
-    df = return_df(country, pnns1_chosen, pnns2_chosen)
-    
-    images = []
-    
-    # df is sorted, 5 firsts images shown
-    for diet in diets:
-        for _, IMG in df_sorting(diet, df).head(5).iterrows():
-            code = IMG.iloc[0]
-            product_name = IMG.iloc[1]
-            images.append(
-                html.Div([
-                    html.Img(
-                        src=get_image(str(code)),
-                        alt="Product Image",
-                        style={'width': '150px', 'height': '150px'}
-                    ),
-                    html.Div(
-                    product_name,
-                    style={'text-align': 'center', 'margin-top': '5px'}
-                )
-                ]))
-     
-    style_inside_diet = {'display': 'None'}
-    style_outside_diet = {'display': 'block'}
-    style_search_div = {'display': 'None'}
-    
-    images.append(style_inside_diet)
-    images.append(style_outside_diet)
-    images.append(style_search_div)
-    print("images_showing", time.time() - elapsed_time) if DEBUG else None
-    return images
-
-@app.callback(
-    Output("graph_macronutrients", 'figure'),
-    Output("diet_inside_images_div", 'children'),
-    Output("diet_inside_buttons_div", 'style', allow_duplicate=True),
-    Output("diet_buttons_div", 'style', allow_duplicate=True),
-    Output("selected_products_div", 'style', allow_duplicate=True),
-    Output("advanced_search_div", 'style', allow_duplicate=True),
-    Output("advanced_search_div_graph", 'style', allow_duplicate=True),
-    Output("personnalized_sorting", 'data'),
-    
-    
-    *[Input(f'{diet}_button', 'n_clicks') for diet in diets],
-    Input('check_list_graph','value'),
-    Input('dropdown_nutrients', 'value'),
-
-    State('personnalized_sorting', 'data'),
-    State('dropdown_country','value'),
-    State('pnns1_chosen', 'data'),
-    State('pnns2_chosen', 'data'),
-    
-    prevent_initial_call=True,
-)
-def images_showing_diet(*args):
-    elapsed_time = time.time() if DEBUG else None
-    
-    df = return_df(args[-3], args[-2], args[-1])
-    
-    # Searching for the button clicked
-    # We retrieve the informations of the 10 first products
-    
-    if ctx.triggered_id in [diet + "_button" for diet in diets]:        
-        for i, diet in enumerate([diet + "_button" for diet in diets]):
-            if diet == ctx.triggered_id:
-                df_10 = df_sorting(diets[i], df).head(10)
-                df_10 = mapping_nutriscore_IMG(df_10)
-                # We get the sorting informations
-                sorted_by = df_sorting(diets[i])
-                # to keep in memory
-                personnalized_sorting = diets[i]
-                # If we clicked a second time
-                if args[i] % 2 == 0:  
-                    style_inside_diet = {'display': 'None'}
-                    style_outside_diet = {'display': 'block'}
-                    style_product_div = {'display': 'None'}
-                    style_search_div = {'display': 'None'}
-                    style_search_div_graph = {'display': 'None'}
-                    images = [] # Source d'erreurs ?
-                # If we clicked the first time
-                else :
-                    style_inside_diet = {'display': 'block'}
-                    style_outside_diet = {'display': 'None'}
-                    style_product_div = {'display': 'None'}
-                    style_search_div = {'display': 'None'}
-                    style_search_div_graph = {'display': 'None'}
-                    
-                    images = []
-                    images.append(html.Div([html.Strong(f"BEST RECOMMENDED PRODUCTS FOR {personnalized_sorting.upper()}")], 
-                                     style={'font-size': '24px', 'color': 'black', 
-                           'textAlign': 'center', 'margin': '0px', 'border': 'none', 'background-color': 'gray',
-                                            'display': 'flex', 'flex-direction': 'column', 'width': '100%'}))
-
-                    for _, IMG in df_10.iterrows():
-                        
-                        images.append(
-                            html.Div([
-                                html.Img(
-                                    src=get_image(str(IMG.iloc[0])),
-                                    alt="Product Image",
-                                    style={'width': '200px', 'height': '200px'}
-                                ),
-                                html.Div([
-                                    html.Div([html.Strong("Code: "),
-                                    f": {IMG.iloc[0]}"],
-                                    style={'text-align': 'left', 'margin-top': '1px'}
-                                    ),
-                                    html.Div([html.Strong("Product: "),
-                                        f"{IMG.iloc[1]}"],
-                                        style={'text-align': 'left', 'margin-top': '1px'}
-                                    ),
-                                    html.Div([html.Strong(f"{sorted_by[0]}:"),
-                                        f"{IMG.loc[IMG.index == sorted_by[0]].values[0]}"],
-                                        style={'text-align': 'left', 'margin-top': '1px'}
-                                    ),
-                                    html.Div([html.Strong(f"{sorted_by[1]}:"),
-                                        f"{IMG.loc[IMG.index == sorted_by[1]].values[0]}"],
-                                        style={'text-align': 'left', 'margin-top': '1px'}
-                                    ),
-                                    html.Img(
-                                        src=dash.get_asset_url(str(IMG.iloc[-1])),
-                                        alt="Product Nutriscore",
-                                        style={'width': '100px', 'height': '50px'}
-                                    ),
-                                ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
-
-                            ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'})
-                        )
-                        images.append(html.Hr(style={'border-top': '1px solid black'}))
-                
-    else :
-        df_10 = df_sorting(args[-4], df).head(10)
-        style_inside_diet = dash.no_update
-        style_outside_diet = dash.no_update
-        style_product_div = dash.no_update
-        style_search_div = dash.no_update
-        style_search_div_graph = dash.no_update
-        
-        images = dash.no_update
-    
-    ch_list_graph = args[-6]
-    nutrients_choice = args[-5]
-    
-    # Creating a figure of the data distribution 
-    figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_10)
-    
-    print("images_showing_diet", time.time() - elapsed_time) if DEBUG else None
-    return figure, images, style_inside_diet, style_outside_diet, style_product_div, style_search_div, style_search_div_graph, personnalized_sorting
-
-@app.callback(
-    Output("graph_products", 'figure'),
-    Output("selected_products", 'children'),
-    Output("diet_inside_buttons_div", 'style', allow_duplicate=True),
-    Output("diet_buttons_div", 'style', allow_duplicate=True),
-    Output("selected_products_div", 'style', allow_duplicate=True),
-    Output("advanced_search_div", 'style', allow_duplicate=True),
-    Output("advanced_search_div_graph", 'style', allow_duplicate=True),
-    
-    Input('search_bar', 'value'),
-    Input('check_list_graph_product','value'),
-    Input('dropdown_nutrients_product', 'value'),
-
-    State('dropdown_country','value'),
-    
-    prevent_initial_call=True,
-)
-def description_product(search_bar, ch_list_graph, nutrients_choice, country):
-    elapsed_time = time.time() if DEBUG else None
-    
-    if search_bar != None:
-        
-        style_inside_diet = {'display': 'None'}
-        style_outside_diet = {'display': 'None'}
-        style_product_div = {'display': 'block'}
-        style_search_div = {'display': 'None'}
-        style_search_div_graph = {'display': 'None'}
-
-        df_product = data.query('product_name == @search_bar')
-        df_product = mapping_nutriscore_IMG(df_product)
-
-        children = []
-        for _, row in df_product.iterrows():
-
-            pnns1 = row.loc[row.index == "pnns_groups_1"].values[0]
-            pnns2 = row.loc[row.index == "pnns_groups_2"].values[0]
-            df = return_df(country, pnns1, pnns2)
-
-            # Creating a figure of the data distribution 
-            figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_product)
-
-
-            children.append(
-                html.Div([
-                    html.Img(
-                        src=get_image(str(row.iloc[0])),
-                        alt="Product Image",
-                        style={'width': '400px', 'height': '400px'}
-                    ),
-                    html.Div([
-                        html.Div([
-                            html.Strong(f"{col}:"),
-                            f" {row[col]}"],
-                            style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px'}
-                        )
-                        for col in row.index[:-1]  # Exclude the last column (nutriscore_image)
-                    ] + [
-                        html.Img(
-                            src=dash.get_asset_url(str(row.iloc[-1])),
-                            alt="Product Nutriscore",
-                            style={'width': '100px', 'height': '50px', 'margin-left':'10px'}
-                        ),
-                    ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'}),
-                ])
-            )
-            children.append(html.Hr(style={'border-top': '4px solid black'}))
-            children.append(html.Div([html.Strong("BEST RECOMMENDED PRODUCTS BY CATEGORY")], 
-                                     style={'font-size': '24px', 'color': 'black', 'width': '400px', 
-                           'textAlign': 'center', 'margin': '0px', 'border': 'none', 'background-color': 'gray',
-                                            'display': 'flex', 'flex-direction': 'column', 'width': '100%'}))
-            
-            for diet in diets:
-                children.append(html.Div([html.Strong(f"{diet}")], 
-                    style={
-            'font-size': '16px', 'color': 'black', 'textAlign': 'center', 'margin': '0px',
-            'border': '1px', 'background-color': 'lightgray', 'width': '100%', 'margin': 'auto'}))
-                image_divs = [
-                    html.Div([
-                        html.Img(
-                            src=get_image(str(IMG.iloc[0])),
-                            alt="Product Image",
-                            style={'width': '150px', 'height': '150px'}
-                        ),
-                        html.Div(
-                            IMG.iloc[1],
-                            style={'text-align': 'center', 'margin-top': '5px'}
-                        ),
-                    ]) for _, IMG in df_sorting(diet, df).head(5).iterrows()
-                ]
-
-                children.append(html.Div(image_divs, style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}))
-                children.append(html.Hr(style={'border-top': '1px solid black'}))
-
-    else: 
-        figure = dash.no_update
-        children = dash.no_update
-        style_inside_diet = {'display': 'None'}
-        style_outside_diet = {'display': 'block'}
-        style_product_div = {'display': 'None'}
-        style_search_div = {'display': 'None'}
-        style_search_div_graph = {'display': 'None'}
-        
-    
-    print("description_product", time.time() - elapsed_time) if DEBUG else None
-    return figure, children, style_inside_diet, style_outside_diet, style_product_div, style_search_div, style_search_div_graph
 
 @app.callback(
     *[
@@ -1320,10 +1002,11 @@ def description_product(search_bar, ch_list_graph, nutrients_choice, country):
     Input("dropdown_pnns1", "value"), 
     Input("dropdown_pnns2", "value"), 
     Input('reset_sliders_button', 'n_clicks'),
+    Input('advanced_search_button', 'n_clicks'),
     State('dropdown_country','value'),
     prevent_initial_call=True,
 )
-def update_sliders(pnns1_chosen, pnns2_chosen, n_clicks, country):
+def update_sliders(pnns1_chosen, pnns2_chosen, n_clicks, n_clicks_search, country):
     elapsed_time = time.time() if DEBUG else None
             
     if ctx.triggered_id == "reset_sliders_button":
@@ -1337,7 +1020,10 @@ def update_sliders(pnns1_chosen, pnns2_chosen, n_clicks, country):
         if pnns2_chosen == 0:
             pnns2_chosen = 0
         df = return_df(country, pnns1_chosen, pnns2_chosen)
-        pnns_groups_2 = pnns_groups[pnns1_chosen]
+        if pnns1_chosen:
+            pnns_groups_2 = pnns_groups[pnns1_chosen]
+        else: 
+            pnns_groups_2 = []
         diet = dash.no_update
     
     if isinstance(df, pd.DataFrame):
@@ -1357,87 +1043,299 @@ def update_sliders(pnns1_chosen, pnns2_chosen, n_clicks, country):
 
     return dash.no_update
 
-
 @app.callback(
-    Output("diet_inside_buttons_div", 'style', allow_duplicate=True),
-    Output("diet_buttons_div", 'style', allow_duplicate=True),
-    Output("selected_products_div", 'style', allow_duplicate=True),
-    Output("advanced_search_div", 'style', allow_duplicate=True),
-    Output("advanced_search_div_graph", 'style', allow_duplicate=True),
-    Output("advanced_search_div_children", 'children'),
-    Output("graph_products_search", 'figure'),
-
-    Input("advanced_search", "n_clicks"),
-    Input("search_confirmation_button", "n_clicks"),
-    Input("check_list_graph_search", "value"), 
-    Input("dropdown_nutrients_search", "value"), 
+    Output('images_title', 'children'),
+    *[Output(f'{diet}_div', 'children') for diet in diets],
+    *[Output(f'{diet}_img_{i}', 'src') for diet in diets for i in range(20)],
+    *[Output(f'{diet}_img_{i}', 'style') for diet in diets for i in range(20)],
+    *[Output(f'{diet}_div_{i}', 'children') for diet in diets for i in range(20)],
+    Output("graph_products_img", 'figure'),
+    Output("graphic_gestion", 'style'),
+    Output('personnalized_sorting', 'data', allow_duplicate=True),
+    Output("selected_product_style", 'style'),
+    Output("selected_product_img", 'src'),
+    Output("selected_product_title", 'children'),
+    Output("selected_product_texte", 'children'),
+    Output('advanced_search_div', 'style', allow_duplicate=True),
+    Output('search_on', 'data'),
+    Output('shown_img', 'data'),
     
+    *[Input(f'{diet}_div', 'n_clicks') for diet in diets],
+    *[Input(f'{diet}_img_{i}', 'n_clicks') for diet in diets for i in range(20)],
+    Input('pnns1_chosen', 'data'),
+    Input('pnns2_chosen', 'data'),
+    Input('dropdown_country','value'),
+    Input('dropdown_nutrients_img', 'value'),
+    Input('check_list_graph_img','value'),
+    Input('search_bar', 'value'),
+    Input('search_confirmation_button', 'n_clicks'),
+    Input('advanced_search_button', 'n_clicks'),
+    
+    State('personnalized_sorting', 'data'),
     State('sliced_file', 'data'),
     State("dropdown_diet", "value"), 
+    State('search_on', 'data'),
+    State('dropdown_number_product', 'value'),
+    State('shown_img', 'data'),
     
     prevent_initial_call=True,
 )
-def advanced_search_button(n_clicks_div, n_clicks_search, ch_list_graph, nutrients_choice, df_slice, diet):
+
+def display_images(*args):
+    elapsed_time = time.time() if DEBUG else None
     
-    if ctx.triggered_id == "advanced_search": 
-        style_inside_diet = {'display': 'None'}
-        style_outside_diet = {'display': 'None'}
-        style_product_div = {'display': 'None'}
-        style_search_div = {'display': 'block'}
+    # A way to handle that many variables
+    diet1, diet2, diet3, diet4, diet5,  = args[0], args[1], args[2], args[3], args[4]
+    list_clicks_img = args[5:-14]
+    pnns1_chosen, pnns2_chosen, country = args[-14], args[-13], args[-12]
+    nutrients_choice, ch_list_graph, search_bar = args[-11], args[-10], args[-9]
+    clicked_search, click_advanced_search = args[-8], args[-7]
+    selected_diet, df_slice, dropdown_diet, search_on, n_best = args[-6], args[-5], args[-4], args[-3], args[-2]
+    shown_img_data = args[-1] 
+
+    output_values = []
+    title = None
+    figure = dash.no_update
+    selected_product_img = dash.no_update
+    selected_product_title = dash.no_update
+    selected_product_texte = dash.no_update
+    selected_product_style = dash.no_update
+    advanced_search_style = dash.no_update
+    
+    if ctx.triggered_id in ['check_list_graph_img', 'dropdown_nutrients_img']:
+        images = [dash.no_update] * 100
+        styles_images = [dash.no_update] * 100
+        textes_images = [dash.no_update] * 100
+        subtitles = [dash.no_update] * 5
     else: 
-        style_inside_diet=dash.no_update
-        style_outside_diet=dash.no_update
-        style_product_div=dash.no_update
-        style_search_div=dash.no_update
-        
-    # creation figure
-    if ctx.triggered_id in ["search_confirmation_button", "check_list_graph_search", "dropdown_nutrients_search"]:
-        # Retrieve the slice data, then sort and retrieve the 10 best, then match the nutriscore image
-        df = pd.read_json(StringIO(df_slice), orient='split')
-        df_product = copy.copy(df_sorting(diet, df).head(10))
-        df_product = mapping_nutriscore_IMG(df_product)
+        images, textes_images, styles_images, subtitles = [], [], [], []
+    
+    # dataframe preparation, only when necessary
+    if ctx.triggered_id not in ['advanced_search_button', 'search_confirmation_button']:
+        df = return_df(country, pnns1_chosen, pnns2_chosen)
+    
+    # If clicking on diet preference
+    if ctx.triggered_id in [f'{diet}_div' for diet in diets] + ['search_confirmation_button']:
+              
+        for i, diet in enumerate([diet + "_div" for diet in diets]):
+            if ctx.triggered_id == 'search_confirmation_button':
+                if diet[:-4] == dropdown_diet:
+                    selected_diet = diets[i] # To keep the selected button
+                    advanced_search_style = dash.no_update
+                    df = pd.read_json(StringIO(df_slice), orient='split')
+                    search_on = True
+                    
+            else:
+                # Add information when it is the selected diet
+                if diet == ctx.triggered_id:
+                    search_on = False
+                    selected_diet = diets[i] # To keep the selected button
+                    advanced_search_style = {'display':'None'}
+                    # sort and retrieve the N best, then match the nutriscore image           
+                    df_N_best = df_sorting(diets[i], df).head(n_best)
+                    df_N_best = mapping_nutriscore_IMG(df_N_best)
+
+                    title = html.Strong(f"BEST RECOMMENDED PRODUCTS FOR {diets[i].upper()}")
+                    subtitles.append(html.Strong(f"{diets[i]}"))
+
+                    for _, row in df_N_best.iterrows():
+
+                        images.append(get_image(str(row.iloc[0])))
+                        styles_images.append({'width': '350px', 'height': '350px'})
+
+                        textes_images.append(
+                            html.Div([
+                                html.Div([
+                                    html.Strong(f"{col}:"),
+                                    f" {row[col]}"],
+                                    style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px'}
+                                )
+                                for col in row.index[:-1]  # Exclude the last column (nutriscore_image)
+                            ] + [
+                                html.Img(
+                                src=dash.get_asset_url(str(row.iloc[-1])),
+                                    alt="Product Nutriscore",
+                                    style={'width': '100px', 'height': '50px', 'margin-left':'10px'}
+                                ),
+                            ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'}))
+                    # We complete
+                    if df_N_best.shape[0] < 20:
+                        images = images + [None] * (20 - df_N_best.shape[0])
+                        styles_images = styles_images + [{'display':'None'}] * (20 - df_N_best.shape[0])
+                        textes_images = textes_images + [None] * (20 - df_N_best.shape[0])
+                        
+                
+                # Add blanks when it is not the selected one
+                else:
+                    
+                    subtitles.append(html.Strong(f"{diets[i]}"))  
+                    images = images + [None] * 20
+                    styles_images = styles_images + [{'display':'None'}] * 20
+                    textes_images = textes_images + [None] * 20
         
         # Creating a figure of the data distribution 
-        figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_product)
-    else:
+        figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_N_best)
+        graphic_gestion_style = {'display':'block'}
+        selected_product_style = {'display':'None'}
+        
+    # When navigating on the left panel    
+    elif ctx.triggered_id in ['pnns1_chosen', 'pnns2_chosen', 'dropdown_country']:
+        
+        title = html.Strong("BEST RECOMMENDED PRODUCTS BY CATEGORY")
         figure = dash.no_update
-    
-    if ctx.triggered_id == "search_confirmation_button":
-        style_search_div_graph = {'display': 'block'}
+        graphic_gestion_style = {'display':'None'}
+        selected_product_style = {'display':'None'}
+        advanced_search_style = {'display':'None'}
+        selected_diet = dash.no_update
+        search_on = False
+        
+        # df is sorted, n firsts images shown
+        for diet in diets:
+            
+            subtitles.append(html.Strong(f"{diet}"))
+            df_N_best = df_sorting(diet, df).head(n_best)
+            df_N_best = mapping_nutriscore_IMG(df_N_best)
+            
+            for _, IMG in df_N_best.iterrows():
+                code = IMG.iloc[0]
+                product_name = IMG.iloc[1]
+                images.append(get_image(str(code)))
+                styles_images.append({'width': '150px', 'height': '150px'})
 
-        children = []
-        for _, row in df_product.iterrows():
-
-            children.append(
-                html.Div([
-                    html.Img(
-                        src=get_image(str(row.iloc[0])),
-                        alt="Product Image",
-                        style={'width': '400px', 'height': '400px'}
-                    ),
+                textes_images.append(
                     html.Div([
-                        html.Div([
-                            html.Strong(f"{col}:"),
-                            f" {row[col]}"],
-                            style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px'}
-                        )
-                        for col in row.index[:-1]  # Exclude the last column (nutriscore_image)
+                    html.Div(product_name, style={'text-align': 'center', 'margin-top': '5px'}) 
                     ] + [
                         html.Img(
-                            src=dash.get_asset_url(str(row.iloc[-1])),
+                        src=dash.get_asset_url(str(IMG.iloc[-1])),
                             alt="Product Nutriscore",
                             style={'width': '100px', 'height': '50px', 'margin-left':'10px'}
                         ),
-                    ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'}),
-                ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'})
-            )
-            children.append(html.Hr(style={'border-top': '1px solid black'}))
-    else:
-        style_search_div_graph = dash.no_update
-        children = dash.no_update
+                    ])
+                )
+            # We complete
+            if df_N_best.shape[0] < 20:
+                images = images + [None] * (20 - df_N_best.shape[0])
+                styles_images = styles_images + [{'display':'None'}] * (20 - df_N_best.shape[0])
+                textes_images = textes_images + [None] * (20 - df_N_best.shape[0])
+                
+    # When modifying the graphic
+    elif ctx.triggered_id in ['check_list_graph_img', 'dropdown_nutrients_img']:
+
+        if search_on:
+            df = pd.read_json(StringIO(df_slice), orient='split')         
+            df_N_best = df_sorting(dropdown_diet, df).head(n_best)
+        else:
+            df_N_best = df_sorting(selected_diet, df).head(n_best)
         
-    return style_inside_diet, style_outside_diet, style_product_div, style_search_div, style_search_div_graph, children, figure
-    
+        figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_N_best)
+        selected_diet, graphic_gestion_style = dash.no_update, dash.no_update
+        images = [dash.no_update] * 100
+        styles_images = [dash.no_update] * 100
+        textes_images = [dash.no_update] * 100
+        subtitles = [dash.no_update] * 5
+        
+        
+    elif ctx.triggered_id in ["search_bar"] + [f'{diet}_img_{i}' for diet in diets for i in range(20)]:
+        if ctx.triggered_id == ["search_bar"]:
+            df_product = data.query('product_name == @search_bar')
+            
+        else: 
+            #shown_img_data[ctx.triggered_id]
+            url = shown_img_data[ctx.triggered_id]
+            code = get_code(url)
+            df_product = data.query('code == @code')
+            
+        # We search for the product [Only one for now]
+        df_product = df_product.head(1) if df_product.shape[0] > 1 else df_product
+        df_product = mapping_nutriscore_IMG(df_product)
+        
+        selected_product_img = get_image(str(df_product["code"].values[0]))
+        selected_product_title = html.Strong(f"{df_product['product_name'].values[0]}")
+        selected_product_texte = html.Div([
+            html.Div([
+                html.Strong(f"{col}:"),
+                f" {df_product[col].values[0]}"],
+                style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px'}
+            )
+            for col in df_product.columns[:-1]  # Exclude the last column (nutriscore_image)
+            ] + [
+                html.Img(
+                src=dash.get_asset_url(str(df_product["nutriscore_score_letter"].values[0])),
+                    alt="Product Nutriscore",
+                    style={'width': '100px', 'height': '50px', 'margin-left':'10px'}
+                ),
+            ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
+                   
+        pnns1 = df_product["pnns_groups_1"].values[0]
+        pnns2 = df_product["pnns_groups_2"].values[0]
+        
+        df = return_df(country, pnns1, pnns2).copy()
+        
+        title = html.Strong("BEST RECOMMENDED PRODUCTS BY CATEGORY")
+        # df is sorted, n firsts images shown
+        for diet in diets:
+            
+            subtitles.append(html.Strong(f"{diet}"))
+            
+            df_N_best = df_sorting(diet, df).head(n_best)
+            df_N_best = mapping_nutriscore_IMG(df_N_best)
+            
+            for _, IMG in df_N_best.iterrows():
+                code = IMG.iloc[0]
+                product_name = IMG.iloc[1]
+                images.append(get_image(str(code)))
+                styles_images.append({'width': '150px', 'height': '150px'})
+
+                textes_images.append(
+                    html.Div([
+                    html.Div(product_name, style={'text-align': 'center', 'margin-top': '5px'}) 
+                    ] + [
+                        html.Img(
+                        src=dash.get_asset_url(str(IMG.iloc[-1])),
+                            alt="Product Nutriscore",
+                            style={'width': '100px', 'height': '50px', 'margin-left':'10px'}
+                        ),
+                    ])
+                )
+                
+            # We complete
+            if df_N_best.shape[0] < 20:
+                images = images + [None] * (20 - df_N_best.shape[0])
+                styles_images = styles_images + [{'display':'None'}] * (20 - df_N_best.shape[0])
+                textes_images = textes_images + [None] * (20 - df_N_best.shape[0])
+                
+        # Creating a figure of the data distribution 
+        figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_product)
+        graphic_gestion_style = {'display':'block'}
+        selected_product_style = {'display':'block'}
+        advanced_search_style = {'display':'None'}
+        search_on = False
+        
+    elif ctx.triggered_id == 'advanced_search_button':
+
+        advanced_search_style = {'float': 'center', 'display': 'block', 'flex-direction': 'row', 
+                                'width': '100%', 'background-color': '#F0F0F0', 'margin-bottom': '20px'}
+        graphic_gestion_style = {'display':'None'}
+        selected_product_style = {'display':'None'}
+        search_on = False
+
+    output_values = [title, *subtitles, *images, *styles_images, *textes_images, 
+                     figure, graphic_gestion_style, selected_diet, selected_product_style, 
+                     selected_product_img, selected_product_title, selected_product_texte,
+                     advanced_search_style, search_on, shown_img_data]
+
+    # Top keep tract of the images src to load when clicking on 
+    for i, src in enumerate(images):
+        key = f'{diets[int(i/20)]}_img_{i%20}'
+        if src == dash.no_update or src == None:
+            continue
+        else:
+            shown_img_data[key] = src
+            
+    print("display_images", time.time() - elapsed_time) if DEBUG else None    
+    return tuple(output_values)   
+
 # Run the app
 if __name__ == '__main__':
     app.run(debug=False)

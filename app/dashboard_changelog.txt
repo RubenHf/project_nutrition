@@ -1,3 +1,14 @@
+Version 0.6.2
+-Minors changes in some function
+-Frontend: Left side and Right side are independent now with the scrolling
+-Frontend: Right side doesn't extend anymore on the right, it slide now
+-Frontend: Scrolling independently for each diet
+-Frontend: Dcc.loading added for smoothier user experience
+-Code: One callback now leads everything for the right side image loading. Leading to improvements in code management
+-Added: Images are clickables and will now display the targeted product
+-Added: Number of product display can be change from 5 10, 15 or 20 products
+-Corrections: On advanced search. 
+
 Version 0.6.1
 -Added: Advanced search feature
 -Advanced search: You can narrow the search to the pnns1 and pnns2 groups, filter by nutrition plan (must), and sliders have been brought back here
