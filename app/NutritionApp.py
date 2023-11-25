@@ -773,21 +773,20 @@ def display_images(*args):
             selected_product_img = get_image(str(df_product["code"].values[0]))
             selected_product_title = html.Strong(f"{df_product['product_name'].values[0]}")
             selected_product_texte = html.Div([
-                html.Div(
-                    [
-                    html.Img(
-                    src=dash.get_asset_url(str(df_product["nutriscore_score_letter"].values[0])),
-                        alt="Product Nutriscore",
-                        style={'width': '100px', 'height': '50px', 'margin-left':'10px'}
+                        html.Img(
+                            src=dash.get_asset_url(str(df_product["nutriscore_score_letter"].values[0])),
+                            alt="Product Nutriscore",
+                            style={'width': '100px', 'height': '50px', 'margin-left':'10px'}
                     )]
                 + 
                 [
-                    html.Strong(f"{col}:"),
-                    f" {df_product[col].values[0]}"],
-                    style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px'}
-                )
+                    html.Div([
+                        html.Strong(f"{col}:"),
+                        f" {df_product[col].values[0]}"],
+                        style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px'}
+                    )
                 for col in df_product.columns[:-1]  # Exclude the last column (nutriscore_image)
-                ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
+            ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
 
             pnns1 = df_product["pnns_groups_1"].values[0]
             pnns2 = df_product["pnns_groups_2"].values[0]
