@@ -1,3 +1,7 @@
+Version 0.6.4
+-Dcc.loading wrapping around images
+-Better code management
+-Images are cleared before loaded
 Version 0.6.3
 -Correction: Advanced search had an malfunction because of the past implement
 -Images: Wrapped by a dcc.link, to show that there are clickable

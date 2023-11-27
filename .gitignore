@@ -1,6 +1,10 @@
 file_location.txt
 notes_projet.docx
 files/en.openfoodfacts.org.products.csv
+files/missing_data.csv
 notebooks/Halifa_Ruben_2_notebook_exploration_032023.ipynb
 env/
 .ipynb_checkpoints/
+notebooks/app/
+notebooks/.ipynb_checkpoints/
+notebooks/assets/

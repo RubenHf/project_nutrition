@@ -22,3 +22,11 @@ def generate_dropdown(value, options, placeholder, multi, id, clearable = True):
                 id=id,
                 clearable=clearable,
             )
+
+# Function to generate a Button
+def generate_button(title_button, id_button, style_button):
+    return html.Button(
+        title_button, 
+        id=id_button, 
+        n_clicks=0, 
+        style=style_button)
