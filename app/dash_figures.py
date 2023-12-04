@@ -223,11 +223,6 @@ def create_figure_products(df, list_nutrients, selected_nutrients, selected_grap
             figure.add_trace(figure_energy_selected.data[i], secondary_y=False)
             figure.add_trace(figure_others_selected.data[i], secondary_y=True)
 
-            #
-           # if isinstance(df_selected_products, pd.DataFrame): 
-            #    figure.add_trace(figure_energy_selected.data[i], secondary_y=False)
-             #   figure.add_trace(figure_others_selected.data[i], secondary_y=True)
-
         # Update of figure layout
         figure.update_layout(
             yaxis_title="g/100g",

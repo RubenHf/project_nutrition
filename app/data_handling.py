@@ -1,19 +1,34 @@
 ﻿import pandas as pd
 import copy
 import os
+import dash
+from dash import html
 
- # Get the directory of the script
-script_dir = os.path.dirname(os.path.abspath(__file__))
+try:
+    # Get the current directory of the notebook
+    file_dir = os.getcwd()
+    app_dir = os.path.dirname(file_dir)
 
-# Go up one level to the parent directory (assuming the script is in the 'app' directory)
-app_dir = os.path.dirname(script_dir)
+    # Define the path to the file in the /files directory
+    #file_path = os.path.join(app_dir, 'files', 'cleaned_data.csv')
+    file_path='cleaned_data.csv'
+    # Now you can use the file_path to access your file
+    with open(file_path, 'r') as file:
+        data = pd.read_csv(file_path, sep = "\t")
 
-# Define the path to the file in the /files directory
-file_path = os.path.join(app_dir, 'files', 'cleaned_data.csv')
+except:
+    # Get the directory of the script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Now you can use the file_path to access your file
-with open(file_path, 'r') as file:
-    data = pd.read_csv(file_path, sep = "\t")
+    # Go up one level to the parent directory (assuming the script is in the 'app' directory)
+    app_dir = os.path.dirname(script_dir)
+
+    # Define the path to the file in the /files directory
+    file_path = os.path.join(app_dir, 'files', 'cleaned_data.csv')
+
+    # Now you can use the file_path to access your file
+    with open(file_path, 'r') as file:
+        data = pd.read_csv(file_path, sep = "\t")
 
 # Return the pd.DataFrame
 def get_data():
@@ -196,7 +211,10 @@ def df_sorting(diet, df = None):
     type_diet = {
         "Healthier foods": [
             {'column_id': 'nutriscore_score', 'direction': True},
-            {'column_id': 'fiber_100g', 'direction': False}
+        ],
+        "Fiber rich foods": [
+            {'column_id': 'fiber_100g', 'direction': False},
+            {'column_id': 'nutriscore_score', 'direction': True}
         ],
         "Low sugar foods": [
             {'column_id': 'carbohydrates_100g', 'direction': True},
@@ -212,6 +230,14 @@ def df_sorting(diet, df = None):
         ],
         "Low fat foods": [
             {'column_id': 'fat_100g', 'direction': True},
+            {'column_id': 'nutriscore_score', 'direction': True}
+        ],
+        "Low salt foods": [
+            {'column_id': 'salt_100g', 'direction': True},
+            {'column_id': 'nutriscore_score', 'direction': True}
+        ],
+        "Low saturated fat foods": [
+            {'column_id': 'saturated-fat_100g', 'direction': True},
             {'column_id': 'nutriscore_score', 'direction': True}
         ],
     }
@@ -233,3 +259,67 @@ def df_sorting(diet, df = None):
         return df_copy
     else: 
         return column_id
+
+    
+# Function filling the list subtitles, images, styles_images, textes_images
+def generate_texte_image(df, diets, n_best, subtitles, images, styles_images, textes_images):                 
+    for i, diet in enumerate(diets):
+        subtitles[i] = html.Strong(f"{diet}")
+        
+        # We sort, we take the n_best then we map the nutriscore label
+        df_N_best = mapping_nutriscore_IMG(df_sorting(diet, df).head(n_best))
+
+        for y, (_, IMG) in enumerate(df_N_best.iterrows()):
+            index = y if i == 0 else (20 * i) + y
+            code = IMG.iloc[0]
+            product_name = IMG.iloc[1]
+            
+            # We retrieve the image url via the code
+            images[index] = get_image(str(code))
+
+            styles_images[index] = {'width': '150px', 'height': '150px'}
+
+            textes_images[index] = (
+                html.Div([
+                    get_nutriscore_image(str(IMG.iloc[-1]))
+                ] + [
+                html.Div(product_name, style={'text-align': 'center', 'margin-top': '5px'}) 
+                ])
+            ) 
+    return subtitles, images, styles_images, textes_images   
+
+# Return imagve of nutriscore
+def get_nutriscore_image(img):
+    return html.Img(
+            src=dash.get_asset_url(img),
+                alt="Product Nutriscore",
+                style={'width': '100px', 'height': '50px', 'margin-left':'10px'}
+            )
+# Return Image of nutriscore then the text below with nutrition informations
+def get_texte_product(row):
+    return html.Div([
+        get_nutriscore_image(str(row.iloc[-1]))
+        ] + [
+        html.Div([
+            html.Strong(f"{row.index[i]}:"),
+            #f" {row[col].values[0]}"],
+            f" {row.iloc[i]}"],
+            style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px'}
+            )
+        #for col in row.columns[:-1]  # Exclude the last column (nutriscore_image)
+        for i, col in enumerate(row.iloc[:-1])
+    ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
+    
+def find_key_by_value(my_dict, value):
+    """
+    Function searching which key contains the value
+    Args: The dict to search in and the value to search
+    Return None, if not in the dict
+    
+    """
+    
+    for key, val in my_dict.items():
+        if value in val:
+            return key
+    # If the value is not found
+    return None 

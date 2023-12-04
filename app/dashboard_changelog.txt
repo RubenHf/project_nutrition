@@ -1,3 +1,12 @@
+Version 0.6.5
+-Correction: Searching for a product was Right to left, now it is back to left to right.
+-Front-end: Changing the arrow for returning the menu to a 3 bars display.
+-Recommandation: 3 new diet added: Low salt, Low saturated-fat, fiber rich foods
+-Recommandation: Healthier food was modify to only search for nutriscore foods
+-Optimization: Better handling of events clicking on buttons pins groups
+-Optimization: Reduction of code for better 
+-Search_bar: Can now search by product name or code. 
+-Browsing history: A browsing history was added. You can go back to the previous search that were done
 Version 0.6.4
 -Dcc.loading wrapping around images
 -Better code management
