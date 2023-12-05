@@ -3,6 +3,8 @@ import copy
 import os
 import dash
 from dash import html
+import requests
+import concurrent.futures
 
 try:
     # Get the current directory of the notebook
@@ -149,18 +151,46 @@ def return_df(country, pnns1 = None, pnns2 = None):
     else:
         return None
 
-def get_image(code):
+def get_image(code, number = 1):
     # Transform the code to produce the Open Food Facts image URL
+    # number = the image we choose to retrieve
     if len(code) <= 8:
-        url = f'https://images.openfoodfacts.org/images/products/{code}/1.jpg'
+        url = f'https://images.openfoodfacts.org/images/products/{code}/{number}.jpg'
         return url
     elif len(code) > 8:
         code = "0"*(13 - len(code)) + code
-        url = f'https://images.openfoodfacts.org/images/products/{code[:3]}/{code[3:6]}/{code[6:9]}/{code[9:]}/1.jpg'
+        url = f'https://images.openfoodfacts.org/images/products/{code[:3]}/{code[3:6]}/{code[6:9]}/{code[9:]}/{number}.jpg'
         return url
     else:
         return None
+
+def check_url_image(url):
+    """
+    Check if the link of the image is correct
+    Return none if not
+    """
+    
+    try:
+        response = requests.head(url) # We use head instead of get, we only need to check the link
+        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
+        return url
+    except requests.exceptions.RequestException:
+        return None
+
+def check_image_urls_parallel(urls):
+    """
+    The check_image_urls_parallel function uses concurrent.futures.ThreadPoolExecutor 
+    to perform the checks concurrently.
+    """
+    
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        #The map function is used to apply the check_url function to each URL in parallel.
+        results = executor.map(check_url_image, urls) # return a generator
         
+    valid_urls = [result for result in results]    
+
+    return valid_urls
+    
 def get_code(url):
     # Extract the product code from the Open Food Facts image URL
     try:
@@ -286,6 +316,11 @@ def generate_texte_image(df, diets, n_best, subtitles, images, styles_images, te
                 html.Div(product_name, style={'text-align': 'center', 'margin-top': '5px'}) 
                 ])
             ) 
+    # Checking each images
+    images = check_image_urls_parallel(images)
+    # Replace image 
+    images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
+    
     return subtitles, images, styles_images, textes_images   
 
 # Return imagve of nutriscore
@@ -302,11 +337,9 @@ def get_texte_product(row):
         ] + [
         html.Div([
             html.Strong(f"{row.index[i]}:"),
-            #f" {row[col].values[0]}"],
             f" {row.iloc[i]}"],
             style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px'}
             )
-        #for col in row.columns[:-1]  # Exclude the last column (nutriscore_image)
         for i, col in enumerate(row.iloc[:-1])
     ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
     

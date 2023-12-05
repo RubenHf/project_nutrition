@@ -11,7 +11,7 @@ from app.dash_figures import create_figure_products
 from app.dash_components import generate_slider, generate_dropdown, generate_button, generate_table, generate_radio_items
 from app.data_handling import pnns_groups_options, return_df, get_image, get_code, mapping_nutriscore_IMG, df_sorting
 from app.data_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
-from app.data_handling import generate_texte_image, get_texte_product
+from app.data_handling import generate_texte_image, get_texte_product, check_image_urls_parallel
 
 # Linked to the external CSS file 
 
@@ -23,7 +23,7 @@ server = app.server
 
 app.title = 'Nutritious app'
 
-versionning = "version: 0.6.5"
+versionning = "version: 0.6.6"
 
 DEBUG = True
 
@@ -215,21 +215,30 @@ app.layout = html.Div([
 
         
         html.Div([
-
+            # Set an invisible anchor
+            html.A(id="top_dash"),
             # To display a selected product at the top
 
             html.Div(id='selected_product_style', style={'display':'None'}, children=[
-                html.Div(id='selected_product_title',  
-                    style=style24),
+                dcc.Loading(id="loading_section_img", type="default", children = [
+                    html.Div(id='selected_product_title',  
+                        style=style24),
 
-                html.Div([
-                    dcc.Loading(id="loading_section_img", type="default", children = [
+                    html.Div([
                         html.Img(id='selected_product_img', src=dash.get_asset_url('no_image.jpg'), 
                             alt="No image available", style = {'height':'450px', 'width':'450px'}),
-                        ]),
-                    html.Div(id='selected_product_texte')
-                ], style={'flex-direction': 'row', 'width': '100%'})
+                        html.Div(id='selected_product_texte')
+                    ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
 
+                    # To display up to 3 + 1 alternatives images
+                    html.Div([
+                        html.A( 
+                            html.Img(id=f"selected_img_{i}", src=dash.get_asset_url('no_image.jpg'), n_clicks = 0, 
+                                 alt="No image available", style={'height': '150px', 'width': '150px'}),
+                            href='#top_dash')
+                        for i in range(4)
+                    ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
+                ]),
             ]),
 
             # To display the list of products
@@ -245,11 +254,11 @@ app.layout = html.Div([
                     html.Div([
                         html.Div([
                             dcc.Loading(id=f"loading_section_{diet}_img_{i}", type="default", children = [
-                            # dcc.Link for having the clickable action on
-                            dcc.Link( 
+                            # html.A for having the clickable action on and going back to top
+                            html.A( 
                                 html.Img(id=f"{diet}_img_{i}", src=dash.get_asset_url('no_image.jpg'), n_clicks = 0, 
                                      alt="No image available", style={'height': '200px', 'width': '200px'}),
-                            href=''),
+                            href='#top_dash'),
                             html.Div(id=f"{diet}_div_{i}")
                                 ]),
                         ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
@@ -579,7 +588,7 @@ def update_sliders(pnns1_chosen, pnns2_chosen, n_clicks, n_clicks_search, countr
 
     return dash.no_update
 
-@app.callback(
+"""@app.callback(
     *[Output(f'{diet}_img_{i}', 'style', allow_duplicate=True) for diet in diets for i in range(20)],
     
     *[Input(f'{diet}_div', 'n_clicks') for diet in diets],
@@ -595,7 +604,7 @@ def clear_image(*args):
     
     output_values = [{'display':'None'}] * TOTAL_IMAGES
     
-    return tuple(output_values)
+    return tuple(output_values)"""
     
 
 @app.callback(
@@ -604,6 +613,8 @@ def clear_image(*args):
     *[Output(f'{diet}_img_{i}', 'src') for diet in diets for i in range(20)],
     *[Output(f'{diet}_img_{i}', 'style') for diet in diets for i in range(20)],
     *[Output(f'{diet}_div_{i}', 'children') for diet in diets for i in range(20)],
+    *[Output(f"selected_img_{i}", 'src') for i in range(4)],
+    *[Output(f"selected_img_{i}", 'style') for i in range(4)],
     Output("graph_products_img", 'figure', allow_duplicate=True),
     Output("graphic_gestion", 'style'),
     Output('personnalized_sorting', 'data', allow_duplicate=True),
@@ -655,7 +666,8 @@ def display_images(*args):
     
     # Initialize 
     no_display = {'display':'None'}
-    images, styles_images, textes_images = [None] * TOTAL_IMAGES, [no_display] * TOTAL_IMAGES, [None] * TOTAL_IMAGES
+    images, styles_images, textes_images = [dash.no_update] * TOTAL_IMAGES, [no_display] * TOTAL_IMAGES, [None] * TOTAL_IMAGES
+    others_img, others_img_style = [None] * 4, [no_display] * 4
     subtitles, title, figure = [None] * len(diets), None, dash.no_update 
     selected_product_img, selected_product_title, selected_product_texte = None, None, None
     graphic_gestion_style, selected_product_style, advanced_search_style = no_display, no_display, no_display
@@ -708,8 +720,7 @@ def display_images(*args):
                     for y, (_, row) in enumerate(df_N_best.iterrows()):
                         index = y if i == 0 else (20 * i) + y
 
-                        images[index] = get_image(str(row.iloc[0]))
-                        styles_images[index] = {'height': '400px'}
+                        styles_images[index] = {'height': '400px', 'width': '400px'}
                         
                         # generate the texte below the image
                         textes_images[index] = get_texte_product(row)
@@ -746,12 +757,26 @@ def display_images(*args):
 
             # We search for the product [Only one for now]
             df_product = df_product.head(1) if df_product.shape[0] > 1 else df_product
+
             df_product = mapping_nutriscore_IMG(df_product)
             
             # We get the product's name
             product_name = df_product['product_name'].values[0]
             
+            # Principale image
             selected_product_img = get_image(str(df_product["code"].values[0]))
+            
+            # Secondaries images
+            # Return the link of the image, then check it's validity
+            others_img = check_image_urls_parallel([
+                          get_image(str(df_product["code"].values[0]), i) 
+                          for i in range(1, 5)])
+            
+            # Display image if link correct
+            others_img_style = [{'height': '150px', 'width': '150px'}
+                               if others_img[i] != None else no_display
+                               for i in range(0, 4)]
+            
             selected_product_title = html.Strong(product_name)
             selected_product_texte = get_texte_product(df_product.iloc[0])
 
@@ -761,23 +786,29 @@ def display_images(*args):
             # We add to the navigation history
             history_nav.insert(0, [f"Product: {product_name}", country, pnns1, pnns2, None, code])
             
+            df = return_df(country, pnns1, pnns2).copy()
+        
+            title = html.Strong("BEST RECOMMENDED PRODUCTS BY CATEGORY")
+
+            subtitles, images, styles_images, textes_images = generate_texte_image(df, diets, n_best, 
+                                                                                   subtitles, images, 
+                                                                                   styles_images, textes_images)
+            
+            # Creating a figure of the data distribution 
+            figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_product)
+            graphic_gestion_style = {'display':'block'}
+            
         except:
-            pnns1, pnns2 = None, None
             selected_product_img = dash.get_asset_url("no_image.jpg")
             selected_product_title = html.Strong("Product not found, search for another one")
-            selected_product_texte = html.Strong("Product not found, search for another one")
-                
-        df = return_df(country, pnns1, pnns2).copy()
+            selected_product_texte = html.Strong("The product is not available")
+
+            title = dash.no_update
+            subtitles = [dash.no_update] * len(diets)
+            styles_images = [dash.no_update] * TOTAL_IMAGES
+            textes_images = [dash.no_update] * TOTAL_IMAGES
+            graphic_gestion_style = dash.no_update
         
-        title = html.Strong("BEST RECOMMENDED PRODUCTS BY CATEGORY")
-        
-        subtitles, images, styles_images, textes_images = generate_texte_image(df, diets, n_best, 
-                                                                               subtitles, images, 
-                                                                               styles_images, textes_images)
-                
-        # Creating a figure of the data distribution 
-        figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_product)
-        graphic_gestion_style = {'display':'block'}
         selected_product_style = {'display':'block'}
         
     elif ctx.triggered_id == 'advanced_search_button':
@@ -793,13 +824,37 @@ def display_images(*args):
         else:
             shown_img_data[key] = src
             
-    output_values = [title, *subtitles, *images, *styles_images, *textes_images, 
+    output_values = [title, *subtitles, *images, *styles_images, *textes_images, *others_img, *others_img_style,
                      figure, graphic_gestion_style, selected_diet, selected_product_style, 
                      selected_product_img, selected_product_title, selected_product_texte,
                      advanced_search_style, search_on, shown_img_data, history_nav]
     
     print("display_images: ", time.time() - elapsed_time) if DEBUG else None  
     return tuple(output_values)
+
+@app.callback(
+    Output("selected_product_img", 'src', allow_duplicate=True),
+    
+    *[Input(f"selected_img_{i}", 'n_clicks') for i in range(4)],
+    
+    *[State(f"selected_img_{i}", 'src') for i in range(4)],
+    
+    prevent_initial_call=True,
+)
+
+def changing_image_selected_product(*args):
+    images = args[4:]
+    
+    # Dictionary mapping trigger IDs to corresponding image indices
+    trigger_to_index = {f"selected_img_{i}": i for i in range(4)}
+
+    # Find the index of the triggered element
+    triggered_index = trigger_to_index.get(ctx.triggered_id, None)
+
+    if triggered_index is not None:
+        return images[triggered_index]
+    else:
+        return dash.no_update
 
 @app.callback(
     Output("graph_products_img", 'figure', allow_duplicate=True),
