@@ -5,32 +5,7 @@ import dash
 from dash import html
 import requests
 import concurrent.futures
-
-try:
-    # Get the current directory of the notebook
-    file_dir = os.getcwd()
-    app_dir = os.path.dirname(file_dir)
-
-    # Define the path to the file in the /files directory
-    #file_path = os.path.join(app_dir, 'files', 'cleaned_data.csv')
-    file_path='cleaned_data.csv'
-    # Now you can use the file_path to access your file
-    with open(file_path, 'r') as file:
-        data = pd.read_csv(file_path, sep = "\t")
-
-except:
-    # Get the directory of the script
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Go up one level to the parent directory (assuming the script is in the 'app' directory)
-    app_dir = os.path.dirname(script_dir)
-
-    # Define the path to the file in the /files directory
-    file_path = os.path.join(app_dir, 'files', 'cleaned_data.csv')
-
-    # Now you can use the file_path to access your file
-    with open(file_path, 'r') as file:
-        data = pd.read_csv(file_path, sep = "\t")
+import queue
 
 # Return the pd.DataFrame
 def get_data():
@@ -133,12 +108,13 @@ def cache(fun):
 
 @cache
 def function(country, pnns1, pnns2):
+    
     df = data.query('countries_en.str.contains(@country)')
-
-    if pnns1:
-        df = df[df.pnns_groups_1 == pnns1]
+    
     if pnns2:
-        df = df[df.pnns_groups_2 == pnns2]
+        df = df.query('pnns_groups_2 == @pnns2')
+    elif pnns1:
+        df = df.query('pnns_groups_1 == @pnns1')
 
     return df
 
@@ -187,10 +163,53 @@ def check_image_urls_parallel(urls):
         #The map function is used to apply the check_url function to each URL in parallel.
         results = executor.map(check_url_image, urls) # return a generator
         
-    valid_urls = [result for result in results]    
+    #The check_url_image function puts the results appropriate queue (checked_queue or failed_queue)
+    for result in results:
+        if result is not None:
+            checked_queue.put(result)
+        else:
+            failed_queue.put(result)   
+        
+# Store globally informations on the url images.
+# If one user check one image, it will be beneficial to all
+# failed_img contains the url that failed.
+checked_images = set()
+failed_img = set()
 
-    return valid_urls
+# We set a queue for allowing a multi user environment 
+checked_queue = queue.Queue()
+failed_queue = queue.Queue()
+
+def testing_img(images):
+    to_test = []
+
+    for i, url in enumerate(images):
+        if url in checked_images:
+            if url in failed_img:
+                images[i] = None
+        else: 
+            if url is not None and 'http' in str(url): 
+                checked_images.add(url)
+                to_test.append(url)
+
+    check_image_urls_parallel(to_test)
     
+    # The queue helps us handle a multi users environement
+    while not checked_queue.empty():
+        url = checked_queue.get()
+        checked_images.add(url)
+
+    while not failed_queue.empty():
+        url = failed_queue.get()
+        failed_img.add(url)
+
+    for i, url in enumerate(images):
+        if url in failed_img:
+            images[i] = None
+      
+    return images
+        
+        
 def get_code(url):
     # Extract the product code from the Open Food Facts image URL
     try:
@@ -297,7 +316,7 @@ def generate_texte_image(df, diets, n_best, subtitles, images, styles_images, te
         subtitles[i] = html.Strong(f"{diet}")
         
         # We sort, we take the n_best then we map the nutriscore label
-        df_N_best = mapping_nutriscore_IMG(df_sorting(diet, df).head(n_best))
+        df_N_best = df_sorting(diet, df).head(n_best)
 
         for y, (_, IMG) in enumerate(df_N_best.iterrows()):
             index = y if i == 0 else (20 * i) + y
@@ -317,19 +336,22 @@ def generate_texte_image(df, diets, n_best, subtitles, images, styles_images, te
                 ])
             ) 
     # Checking each images
-    images = check_image_urls_parallel(images)
+    #images = check_image_urls_parallel(images)
+    images = testing_img(images)
     # Replace image 
     images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
     
     return subtitles, images, styles_images, textes_images   
 
-# Return imagve of nutriscore
-def get_nutriscore_image(img):
+# Return image of nutriscore
+def get_nutriscore_image(img, style={'width': '100px', 'height': '50px', 'margin-left':'10px'}):
     return html.Img(
             src=dash.get_asset_url(img),
                 alt="Product Nutriscore",
-                style={'width': '100px', 'height': '50px', 'margin-left':'10px'}
+                style=style
             )
+    
+    
 # Return Image of nutriscore then the text below with nutrition informations
 def get_texte_product(row):
     return html.Div([
@@ -356,3 +378,32 @@ def find_key_by_value(my_dict, value):
             return key
     # If the value is not found
     return None 
+
+try:
+    # Get the current directory of the notebook
+    file_dir = os.getcwd()
+    app_dir = os.path.dirname(file_dir)
+
+    # Define the path to the file in the /files directory
+    #file_path = os.path.join(app_dir, 'files', 'cleaned_data.csv')
+    file_path='cleaned_data.csv'
+    # Now you can use the file_path to access your file
+    with open(file_path, 'r') as file:
+        data = pd.read_csv(file_path, sep = "\t")
+
+except:
+    # Get the directory of the script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Go up one level to the parent directory (assuming the script is in the 'app' directory)
+    app_dir = os.path.dirname(script_dir)
+
+    # Define the path to the file in the /files directory
+    file_path = os.path.join(app_dir, 'files', 'cleaned_data.csv')
+
+    # Now you can use the file_path to access your file
+    with open(file_path, 'r') as file:
+        data = pd.read_csv(file_path, sep = "\t")
+
+# We do the mapping of nutriscore
+data = mapping_nutriscore_IMG(data)

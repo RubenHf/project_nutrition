@@ -1,17 +1,17 @@
 from dash import html, dcc, dash_table
 
  # Function to generate a RangeSlider
-def generate_slider(title, id, max_value):
+def generate_slider(title, id_dcc, max_value):
     return html.Div([title,
                      dcc.RangeSlider(0, max_value, 1, value=[0, max_value],
                                     marks={0: "0", max_value: str(max_value)},
-                                    id=id,
+                                    id=id_dcc,
                                     tooltip={"placement": "bottom", "always_visible": True})
                      ], style={'textAlign': 'center', 'color': 'black', 'fontSize': 15})
 
 
 # Function to generate a DropDown
-def generate_dropdown(value, options, placeholder, multi, id, clearable = True):
+def generate_dropdown(value, options, placeholder, multi, id_dcc, clearable = True):
     return dcc.Dropdown(
                 value=value,
                 options=options,
@@ -19,8 +19,16 @@ def generate_dropdown(value, options, placeholder, multi, id, clearable = True):
                        'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'width': '100%', 'cursor': 'pointer'},
                 placeholder=placeholder,
                 multi=multi,
-                id=id,
+                id=id_dcc,
                 clearable=clearable,
+            )
+def generate_input(placeholder, id_dcc, type_dcc = "text"):
+    return dcc.Input(
+                style={'fontFamily': 'monospace', 'align-items': 'center', 'justify-content': 'center', 
+                       'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'width': '100%'},
+                placeholder=placeholder,
+                type=type_dcc,
+                id=id_dcc,
             )
 
 # Function to generate a button

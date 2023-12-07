@@ -1,5 +1,5 @@
 ﻿import dash
-from dash import Dash, html, dcc, Output, Input, State, ctx
+from dash import Dash, html, dcc, Output, Input, State, ctx, Patch
 import pandas as pd
 import math
 from io import StringIO
@@ -7,11 +7,11 @@ import time
 from collections import Counter 
 
 # Importing the functions
-from app.dash_figures import create_figure_products
-from app.dash_components import generate_slider, generate_dropdown, generate_button, generate_table, generate_radio_items
-from app.data_handling import pnns_groups_options, return_df, get_image, get_code, mapping_nutriscore_IMG, df_sorting
+from app.dash_figures import create_figure_products, blank_figure, patch_graphic
+from app.dash_components import generate_slider, generate_dropdown, generate_table, generate_radio_items, generate_input, generate_button
+from app.data_handling import pnns_groups_options, return_df, get_image, get_code, df_sorting, get_nutriscore_image
 from app.data_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
-from app.data_handling import generate_texte_image, get_texte_product, check_image_urls_parallel
+from app.data_handling import generate_texte_image, get_texte_product, testing_img
 
 # Linked to the external CSS file 
 
@@ -170,17 +170,22 @@ app.layout = html.Div([
                 
                 # Dropdown for the pnns_groups_1
                 html.Div([
-                    generate_dropdown(None, pnns_groups_1, "Choose a PNNS group 1", False, 'dropdown_pnns1')
+                    generate_dropdown(None, pnns_groups_1, "Choose a PNNS group 1 (optional)", False, 'dropdown_pnns1')
                 ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
 
                 # Dropdown for the pnns_groups_2
                 html.Div([
-                    generate_dropdown(None, [], "Choose a PNNS group 2", False, 'dropdown_pnns2')
+                    generate_dropdown(None, [], "Choose a PNNS group 2 (optional)", False, 'dropdown_pnns2')
+                ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
+                
+                # Input to search product
+                html.Div([
+                    generate_input("Search a product (e.g. 'milk') (optional)", "input_search_adv")
                 ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
 
                 # Dropdown for the diet
                 html.Div([
-                    generate_dropdown("Healthier foods", diets, "Choose a nutritious plan", False, 'dropdown_diet', False)
+                    generate_dropdown(None, diets, "Choose a nutritious plan (optional)", False, 'dropdown_diet')
                 ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
 
                 # Sliders controling which products we show
@@ -224,6 +229,11 @@ app.layout = html.Div([
                     html.Div(id='selected_product_title',  
                         style=style24),
 
+                    # Searchbar for products with the same product name
+                    html.Div([
+                        generate_dropdown(None, [], "Search a product", False, 'multiple_product_dropdown')
+                    ], style={'margin': '0 auto', 'border': '1px solid black'}),
+                    
                     html.Div([
                         html.Img(id='selected_product_img', src=dash.get_asset_url('no_image.jpg'), 
                             alt="No image available", style = {'height':'450px', 'width':'450px'}),
@@ -270,6 +280,8 @@ app.layout = html.Div([
             ]),
 
             html.Div(id='graphic_gestion', style={'display': 'None'}, children=[
+                # Horizontale line
+                html.Hr(style={'border-top': '4px solid black'}),  
                 # RadioItems of graphic option
                 html.Div([
                     generate_radio_items(['Radarplot', 'Distribution', 'Products'], 
@@ -283,7 +295,7 @@ app.layout = html.Div([
 
                 # Figure of macronutriments
                 html.Div([
-                    dcc.Graph(id="graph_products_img", style={'height': '600px', 'width': '100%', 'float': 'center'}),
+                    dcc.Graph(figure = blank_figure(), id="graph_products_img", style={'height': '600px', 'width': '100%', 'float': 'center'}),
                 ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
             ]),
 
@@ -302,10 +314,6 @@ app.layout = html.Div([
     
     dcc.Store(id='sliced_file', data=None),
     dcc.Store(id='personnalized_sorting', data=None),
-    dcc.Store(id='selected_product_table', data=None),
-    dcc.Store(id='dropdown_search_bar_number', data=0),
-    dcc.Store(id='dropdown_table_number', data=0),
-    dcc.Store(id='initialization_graph', data = False),
     dcc.Store(id='pnns1_chosen', data=None),
     dcc.Store(id='pnns2_chosen', data=None),
     dcc.Store(id='search_on', data=False),
@@ -313,39 +321,43 @@ app.layout = html.Div([
     # To store the client navigation history
     dcc.Store(id='history', data=[]),
     dcc.Store(id='loading_history', data=False),
+    dcc.Store(id='prevent_update', data=False),
+    dcc.Store(id='search_bar_data', data=False),
+    
     
 ],id='app-container', style={'justify-content': 'space-between', 'margin': '0', 'padding': '0'})
 
 @app.callback(
     Output('sliced_file', 'data'),
     
-    *[Input(f'{slide}', 'value') for slide in slider_trigger],
-    
     Input('dropdown_country','value'),
     Input('dropdown_pnns1','value'),
     Input('dropdown_pnns2','value'),
     
     Input('advanced_search_button', 'n_clicks'),
+
+    *[Input(f'{slide}', 'value') for slide in slider_trigger],
     
     prevent_initial_call=True,
 )
 
-def data_slicing(slide_energy, slide_fat, slide_sat_fat, slide_carbs, 
-                 slide_fiber, slide_prot, slide_salt, slide_macro,
-                 country, pnns1_chosen, pnns2_chosen, clicks):
+def data_slicing(country, pnns1_chosen, pnns2_chosen, _, 
+                 slide_energy, slide_fat, slide_sat_fat, slide_carbs, 
+                 slide_fiber, slide_prot, slide_salt, slide_macro):
 
     sliders = [slide_energy, slide_fat, slide_sat_fat, slide_carbs, slide_fiber, slide_prot, slide_salt, slide_macro]
     elapsed_time = time.time() if DEBUG else None
-    
+      
     # Returning no data to show
     if country is None:
         return None
 
     # It follow the same path for all
     df = return_df(country, pnns1_chosen, pnns2_chosen)
-
-    for nutrient, slide in zip(["energy_100g"] + nutrients, sliders):
-        df = df[(df[nutrient] >= slide[0]) & (df[nutrient] <= slide[1])]
+    
+    if ctx.triggered_id in slider_trigger:
+        for nutrient, slide in zip(["energy_100g"] + nutrients, sliders):
+            df = df[(df[nutrient] >= slide[0]) & (df[nutrient] <= slide[1])]
     
     # Transform to json format
     df = df.to_json(orient='split')
@@ -356,59 +368,124 @@ def data_slicing(slide_energy, slide_fat, slide_sat_fat, slide_carbs,
     
 @app.callback(
     Output('search_bar', 'options'),
+    Output('search_bar_data', 'data'),
     
     Input('dropdown_country','value'),
     Input('type_search_product','value'),
+    Input('search_bar', 'search_value'), 
+    
+    State('search_bar_data', 'data'),
 )
 
 # We prepare the search_bar, changing when the country choice is different
-def search_bar_option_def(country, dropdown_search):
+def search_bar_option_def(country, dropdown_search, search_bar, search_bar_data):
     
     elapsed_time = time.time() if DEBUG else None
     
-    # If we change pnns or country group, we change the bar_option
-    df = return_df(country, None, None)
+    if ctx.triggered_id in ['type_search_product', 'dropdown_country'] or search_bar_data is False:
+        
+        # If we change pnns or country group, we change the bar_option
+        df = return_df(country, None, None)
+        
+        # If we search by product name
+        if dropdown_search == 'Product name':
+            # Get a Series with unique product names and their counts using Counter
+            unique_counts = Counter(df['product_name'])
+
+            # Sort the unique product names
+            sorted_names = sorted(unique_counts.keys())
+
+            # Create the search_bar_option list
+            search_bar_data = [
+                {
+                    'label': f"{name} [{count} products]",
+                    'value': name
+                }
+                for name in sorted_names
+                for count in [unique_counts[name]]
+            ]
+
+        # If we search by product code
+        elif dropdown_search == 'Product code':
+            # Each product has its own unique code
+
+            # Create the search_bar_option list
+            search_bar_data = [
+                {
+                    'label': code,
+                    'value': code
+                }
+                for code in df['code'].unique()
+            ]
+            
+        search_bar_option = []
     
-    # If we search by product name
-    if dropdown_search == 'Product name':
-        # Get a Series with unique product names and their counts using Counter
-        unique_counts = Counter(df['product_name'])
-
-        # Sort the unique product names
-        sorted_names = sorted(unique_counts.keys())
-
-        # Create the search_bar_option list
-        search_bar_option = [
-            {
-                'label': f"{name} [{count} products]",
-                'value': name
-            }
-            for name in sorted_names
-            for count in [unique_counts[name]]
-        ]
+    # If user has written more than 2 letters or number, we show the selection
+    elif ctx.triggered_id == 'search_bar':
+        if len(search_bar) > 2:
+            # We search for the products
+            search_bar_option = [
+                option for option in search_bar_data
+                if search_bar.lower() in str(option['value']).lower()
+                ]
+        else:
+            search_bar_option = []
         
-    # If we search by product code
-    elif dropdown_search == 'Product code':
-        # Each product has its own unique code
-        
-        # Create the search_bar_option list
-        search_bar_option = [
-            {
-                'label': code,
-                'value': code
-            }
-            for code in df['code'].unique()
-        ]
+        search_bar_data = dash.no_update    
 
     print("search_bar_option_def", time.time() - elapsed_time) if DEBUG else None
-    return search_bar_option
+    return search_bar_option, search_bar_data
 
+@app.callback(
+    Output('multiple_product_dropdown', 'value'),
+    Output('multiple_product_dropdown', 'options'),
+    Output('multiple_product_dropdown', 'style', allow_duplicate=True),
+    
+    Input('search_bar', 'value'),
+    State('type_search_product', 'value'),
+    
+    prevent_initial_call=True,
+)
+
+# When selected product have multiple possibilities 
+def multiple_product_dropdown(search_bar, dropdown_search):
+    # initialize values
+    style_multiple_dropdown = dash.no_update
+    option_multiple_dropdown = dash.no_update
+    value_multiple_dropdown = None
+    
+    if dropdown_search == "Product name":
+        
+        # We search for all the products with the same name
+        df_product = get_data().query('product_name == @search_bar')
+        
+        if df_product.shape[0] > 1:
+            # We display the dropdown
+            style_multiple_dropdown = {'display':'block'}
+            
+            # We put the first product
+            value_multiple_dropdown = df_product.iloc[0]['code']
+            
+            # Style for the nutriscore image
+            style={'width': '100px', 'height': '25px', 'margin-left':'10px'}
+            
+            # We put the code as value, as they are unique to each product
+            option_multiple_dropdown = [
+            {
+                'label': html.Div([f"Product code: {row['code']}", 
+                                   get_nutriscore_image(row['nutriscore_score_letter'], style)]),
+                'value': row['code']
+            }
+            for _, row in df_product.iterrows()]
+        
+        
+    return value_multiple_dropdown, option_multiple_dropdown, style_multiple_dropdown 
 
 @app.callback(
     *[Output(f'{pnns2}', 'style') for pnns2 in pnns_groups_2],
     *[Output(f'{pnns1}', 'children') for pnns1 in pnns_groups_1],
     *[Output(f'{pnns2}', 'children') for pnns2 in pnns_groups_2],
-    Output("advanced_search_div", 'style', allow_duplicate=True),
+    Output('advanced_search_div', 'style', allow_duplicate=True),
     Output('images_gestion', 'style', allow_duplicate=True),
     Output('pnns1_chosen', 'data'),
     Output('pnns2_chosen', 'data'),
@@ -418,10 +495,10 @@ def search_bar_option_def(country, dropdown_search):
     *[Input(f'{pnns2}', 'n_clicks') for pnns2 in pnns_groups_2],
     Input('dropdown_country','value'),
     Input('loading_history','data'),
+    Input('pnns1_chosen', 'data'),
+    Input('pnns2_chosen', 'data'),
     
     State('history', 'data'),
-    State('pnns1_chosen', 'data'),
-    State('pnns2_chosen', 'data'),
     
     prevent_initial_call=True,
 )
@@ -442,7 +519,7 @@ def click_pnns_showing(*args):
     style_images_gestion = {'display': 'block', 'flex-direction': 'row', 'width': '100%'}
     
     # We retrieve the last arguments
-    country, history_nav, pnns2_chosen, pnns1_chosen = args[-5], args[-3], args[-1], args[-2] 
+    country, history_nav, pnns2_chosen, pnns1_chosen = args[-5], args[-1], args[-2], args[-3] 
     
     # Initialize the display to none
     output_style = [pnns2_option_invisible] * len(pnns_groups_2) 
@@ -473,8 +550,15 @@ def click_pnns_showing(*args):
         return output_style
     
     # When a pnns_groups_1 or 2 was clicked on
-    if ctx.triggered_id in pnns_groups_1 + pnns_groups_2:    
+    if ctx.triggered_id in pnns_groups_1 + pnns_groups_2:  
         output_style = changing_style_pnns_button(output_style, ctx.triggered_id)
+        
+    # To modify style when navigating with a selected product
+    elif ctx.triggered_id in ["pnns1_chosen", "pnns2_chosen"]:
+        try:
+            output_style = changing_style_pnns_button(output_style, pnns2_chosen)
+        except:
+            output_style = changing_style_pnns_button(output_style, pnns1_chosen)
     
     # When a pnns_groups_1 was clicked on
     if ctx.triggered_id in pnns_groups_1:
@@ -562,8 +646,6 @@ def update_sliders(pnns1_chosen, pnns2_chosen, n_clicks, n_clicks_search, countr
         df = return_df(country, pnns1_chosen, pnns2_chosen)
     
     else:
-        if pnns2_chosen == 0:
-            pnns2_chosen = 0
         df = return_df(country, pnns1_chosen, pnns2_chosen)
         if pnns1_chosen:
             pnns_groups_2 = pnns_groups[pnns1_chosen]
@@ -587,24 +669,6 @@ def update_sliders(pnns1_chosen, pnns2_chosen, n_clicks, n_clicks_search, countr
         return tuple(output_values)
 
     return dash.no_update
-
-"""@app.callback(
-    *[Output(f'{diet}_img_{i}', 'style', allow_duplicate=True) for diet in diets for i in range(20)],
-    
-    *[Input(f'{diet}_div', 'n_clicks') for diet in diets],
-    *[Input(f'{diet}_img_{i}', 'n_clicks') for diet in diets for i in range(20)],
-    *[Input(f'{pnns1}', 'n_clicks') for pnns1 in pnns_groups_1],
-    *[Input(f'{pnns2}', 'n_clicks') for pnns2 in pnns_groups_2],
-    Input('dropdown_country','value'),
-    Input('search_bar', 'value'),
-    
-    prevent_initial_call=True,
-)
-def clear_image(*args):
-    
-    output_values = [{'display':'None'}] * TOTAL_IMAGES
-    
-    return tuple(output_values)"""
     
 
 @app.callback(
@@ -626,6 +690,11 @@ def clear_image(*args):
     Output('search_on', 'data'),
     Output('shown_img', 'data'),
     Output('history', 'data', allow_duplicate=True),
+    Output('multiple_product_dropdown', 'style', allow_duplicate=True),
+    Output('browser_history_div', 'style', allow_duplicate=True),
+    Output('prevent_update', 'data'),
+    Output('pnns1_chosen', 'data', allow_duplicate=True),
+    Output('pnns2_chosen', 'data', allow_duplicate=True),
     
     *[Input(f'{diet}_div', 'n_clicks') for diet in diets],
     *[Input(f'{diet}_img_{i}', 'n_clicks') for diet in diets for i in range(20)],
@@ -635,6 +704,7 @@ def clear_image(*args):
     Input('search_bar', 'value'),
     Input('search_confirmation_button', 'n_clicks'),
     Input('advanced_search_button', 'n_clicks'),
+    Input('multiple_product_dropdown', 'value'),
     
     State('type_search_product', 'value'),
     State('dropdown_nutrients_img', 'value'),
@@ -646,6 +716,8 @@ def clear_image(*args):
     State('dropdown_number_product', 'value'),
     State('shown_img', 'data'),
     State('history', 'data'),
+    State('prevent_update', 'data'),
+    State('input_search_adv', 'value'),
     
     prevent_initial_call=True,
 )
@@ -654,9 +726,9 @@ def display_images(*args):
     elapsed_time = time.time() if DEBUG else None
     
     # We unpack the args
-    (pnns1_chosen, pnns2_chosen, country, search_bar, clicked_search, click_advanced_search, type_search_product,
-     nutrients_choice, ch_list_graph, selected_diet, df_slice, dropdown_diet, search_on, n_best,
-     shown_img_data, history_nav) = args[-16:]
+    (pnns1_chosen, pnns2_chosen, country, search_bar, clicked_search, click_advanced_search, value_multiple_dropdown,
+     type_search_product, nutrients_choice, ch_list_graph, selected_diet, df_slice, dropdown_diet, search_on, 
+     n_best, shown_img_data, history_nav, prevent_update, user_input) = args[-19:]
     
     # Return true if one of the diet was click.
     # It is helping for the browser history
@@ -673,18 +745,29 @@ def display_images(*args):
     graphic_gestion_style, selected_product_style, advanced_search_style = no_display, no_display, no_display
     search_on = False if search_on else dash.no_update
     selected_diet = None if selected_diet != None else dash.no_update
+    style_multiple_dropdown = no_display
+    browser_history_style = no_display
+    
+     # We take a Patch() to modify only some elements of the figure
+    patched_figure = Patch()
+    nutrients_choice = nutrients_choice if nutrients_choice not in [None, []] else nutrients 
+    
+    # Setting some conditions
+    condition_selected_a_product = ctx.triggered_id in ["search_bar", "multiple_product_dropdown"] + [f'{diet}_img_{i}' for diet in diets for i in range(20)]
+    condition_selected_diet_search_navigation = (ctx.triggered_id in clicked_diet_ctx + ['search_confirmation_button']) or (browser_diet)
     
     # dataframe preparation, only when necessary
     if ctx.triggered_id not in ['advanced_search_button', 'search_confirmation_button']:
-        
         df = return_df(country, pnns1_chosen, pnns2_chosen)
         
     elif ctx.triggered_id == 'search_confirmation_button':
+        df = pd.read_json(StringIO(df_slice), orient='split', dtype={'code': str})
+        # We adjust if the user has entered a value
+        if user_input is not None:
+            df = df.query('product_name.str.contains(@user_input)')
         
-        df = pd.read_json(StringIO(df_slice), orient='split')
-        
-    # If clicking on diet preference or confirmed search
-    if (ctx.triggered_id in clicked_diet_ctx + ['search_confirmation_button']) or (browser_diet): 
+    # If clicking on diet preference or confirmed search or from the browser
+    if condition_selected_diet_search_navigation: 
         
         for i, diet in enumerate([diet + "_div" for diet in diets]):
             subtitles[i] = html.Strong(f"{diets[i]}")
@@ -693,8 +776,15 @@ def display_images(*args):
                 
                 # If client clicked on the confirmation button of the advanced search
                 if ctx.triggered_id == 'search_confirmation_button':
-                    if diet[:-4] == dropdown_diet:
+                    # For the selected diet
+                    if diet[:-4] == dropdown_diet: #:-4 is to eliminate some text
                         selected_diet = diets[i] # To keep the selected button
+                        advanced_search_style = dash.no_update
+                        search_on = True
+                        
+                    # If none selected
+                    elif (dropdown_diet == None) or (dropdown_diet == []):
+                        selected_diet = "All"
                         advanced_search_style = dash.no_update
                         search_on = True
                 
@@ -713,10 +803,10 @@ def display_images(*args):
                 if selected_diet == diets[i]:
                     
                     title = html.Strong(f"BEST RECOMMENDED PRODUCTS FOR {diets[i].upper()}")
-                    
-                    # sort and retrieve the N best, then match the nutriscore image           
-                    df_N_best = mapping_nutriscore_IMG(df_sorting(diets[i], df).head(n_best))
 
+                    # sort and retrieve the N best, then match the nutriscore image           
+                    df_N_best = df_sorting(diets[i], df).head(n_best)
+                    
                     for y, (_, row) in enumerate(df_N_best.iterrows()):
                         index = y if i == 0 else (20 * i) + y
 
@@ -724,10 +814,32 @@ def display_images(*args):
                         
                         # generate the texte below the image
                         textes_images[index] = get_texte_product(row)
+                        
+                        # We retrieve the image url via the code
+                        images[index] = get_image(str(row.iloc[0]))
+                        
+                    # Checking each images
+                    images = testing_img(images)
+                    # Replace images
+                    images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
+                            # Creating a figure of the data distribution 
+                    
+                    figure = patch_graphic(patched_figure, df, df_N_best, 
+                                                           ch_list_graph, nutrients_choice, ["A", "B"])
 
-        # Creating a figure of the data distribution 
-        figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_N_best)
-        graphic_gestion_style = {'display':'block'}
+                    graphic_gestion_style = {'display':'block'}
+        
+                # When the user doesn't specifie a diet to search on
+                elif selected_diet == "All":
+                    subtitles, images, styles_images, textes_images = generate_texte_image(df, diets, n_best, 
+                                                                               subtitles, images, 
+                                                                               styles_images, textes_images)
+                    # Checking each images
+                    images = testing_img(images)
+                    # Replace images
+                    images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
+
+        prevent_update = None
         
     # When navigating on the left panel    
     elif ctx.triggered_id in ['pnns1_chosen', 'pnns2_chosen', 'dropdown_country']:
@@ -737,65 +849,108 @@ def display_images(*args):
         subtitles, images, styles_images, textes_images = generate_texte_image(df, diets, n_best, 
                                                                                subtitles, images, 
                                                                                styles_images, textes_images)
+        
+        # Checking each images
+        images = testing_img(images)
+        # Replace images
+        images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
+        
+        prevent_update = pnns2_chosen if ctx.triggered_id == "pnns2_chosen" else None
                                 
     # If the client clicked on the search bar or one of the picture
-    elif ctx.triggered_id in ["search_bar"] + [f'{diet}_img_{i}' for diet in diets for i in range(20)]:
+    elif condition_selected_a_product:
         
         try:
+            # If searched by the search bar
             if ctx.triggered_id == "search_bar":
                 # We check if it is a product name or code entered
-                
-                if type_search_product == "Product name":
-                    df_product = get_data().query('product_name == @search_bar')
-                elif type_search_product == "Product code":
-                    df_product = get_data().query('code == @search_bar')
 
+                if type_search_product == "Product name":
+                    product_code = get_data().query('product_name == @search_bar').get('code')
+                    # If more than 1 product
+                    if product_code.shape[0] > 1:
+                        code = str(value_multiple_dropdown)
+                        style_multiple_dropdown = {'display':'block'}
+                    else:
+                        code = product_code.values[0]
+
+                elif type_search_product == "Product code":
+                    code = str(search_bar)
+
+            # If searched by the intra search bar (multiple products with the same name)
+            elif ctx.triggered_id == "multiple_product_dropdown":
+                # We get the code
+                code = str(value_multiple_dropdown)
+                style_multiple_dropdown = {'display':'block'}
+
+            # If searched by clicking on image
             else: 
                 url = shown_img_data[ctx.triggered_id]
                 code = get_code(url)
+
+            df_product = get_data().query('code == @code')
+
+            # For now it helps to deal with the 0 problem.
+            if df_product.shape[0] == 0:
+                code = "0"*(13 - len(code)) + code
                 df_product = get_data().query('code == @code')
 
-            # We search for the product [Only one for now]
-            df_product = df_product.head(1) if df_product.shape[0] > 1 else df_product
-
-            df_product = mapping_nutriscore_IMG(df_product)
-            
             # We get the product's name
             product_name = df_product['product_name'].values[0]
-            
+
             # Principale image
-            selected_product_img = get_image(str(df_product["code"].values[0]))
-            
+            selected_product_img = get_image(code)
+
             # Secondaries images
             # Return the link of the image, then check it's validity
-            others_img = check_image_urls_parallel([
-                          get_image(str(df_product["code"].values[0]), i) 
-                          for i in range(1, 5)])
             
+            others_img = [get_image(code, i) for i in range(1, 5)]
+            others_img = testing_img(others_img)
+            
+
             # Display image if link correct
             others_img_style = [{'height': '150px', 'width': '150px'}
                                if others_img[i] != None else no_display
                                for i in range(0, 4)]
-            
+
             selected_product_title = html.Strong(product_name)
             selected_product_texte = get_texte_product(df_product.iloc[0])
 
             pnns1 = df_product["pnns_groups_1"].values[0]
             pnns2 = df_product["pnns_groups_2"].values[0]
-                
+
             # We add to the navigation history
             history_nav.insert(0, [f"Product: {product_name}", country, pnns1, pnns2, None, code])
-            
-            df = return_df(country, pnns1, pnns2).copy()
-        
-            title = html.Strong("BEST RECOMMENDED PRODUCTS BY CATEGORY")
 
-            subtitles, images, styles_images, textes_images = generate_texte_image(df, diets, n_best, 
-                                                                                   subtitles, images, 
-                                                                                   styles_images, textes_images)
-            
-            # Creating a figure of the data distribution 
-            figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_product)
+            # If the product visualize is the same as before, we prevent some of the front end update
+            if pnns2 == prevent_update:
+
+                title = dash.no_update
+                subtitles = [dash.no_update] * len(diets)
+                styles_images = [dash.no_update] * TOTAL_IMAGES
+                textes_images = [dash.no_update] * TOTAL_IMAGES
+
+                figure = patch_graphic(patched_figure, None, df_product, 
+                                               ch_list_graph, nutrients_choice, ["B"])
+
+            else:
+                df = return_df(country, pnns1, pnns2).copy()
+
+                title = html.Strong("BEST RECOMMENDED PRODUCTS BY CATEGORY")
+
+                subtitles, images, styles_images, textes_images = generate_texte_image(df, diets, n_best, 
+                                                                                       subtitles, images, 
+                                                                                       styles_images, textes_images)
+                # Checking each images
+                images = testing_img(images)
+                # Replace images
+                images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
+                
+                # Creating a figure of the data distribution 
+                figure = patch_graphic(patched_figure, df, df_product, 
+                                               ch_list_graph, nutrients_choice, ["A", "B"])
+            prevent_update = pnns2
+            pnns1_chosen, pnns2_chosen = pnns1, pnns2
             graphic_gestion_style = {'display':'block'}
             
         except:
@@ -808,6 +963,7 @@ def display_images(*args):
             styles_images = [dash.no_update] * TOTAL_IMAGES
             textes_images = [dash.no_update] * TOTAL_IMAGES
             graphic_gestion_style = dash.no_update
+            prevent_update = None
         
         selected_product_style = {'display':'block'}
         
@@ -815,6 +971,7 @@ def display_images(*args):
         
         advanced_search_style = {'float': 'center', 'display': 'block', 'flex-direction': 'row', 
                                 'width': '100%', 'background-color': '#F0F0F0', 'margin-bottom': '20px'}
+        prevent_update = None
         
     # Top keep tract of the images src to load when clicking on 
     for i, src in enumerate(images):
@@ -824,10 +981,14 @@ def display_images(*args):
         else:
             shown_img_data[key] = src
             
+    pnns1_chosen = pnns1_chosen if condition_selected_a_product else dash.no_update
+    pnns2_chosen = pnns2_chosen if condition_selected_a_product else dash.no_update
+            
     output_values = [title, *subtitles, *images, *styles_images, *textes_images, *others_img, *others_img_style,
                      figure, graphic_gestion_style, selected_diet, selected_product_style, 
                      selected_product_img, selected_product_title, selected_product_texte,
-                     advanced_search_style, search_on, shown_img_data, history_nav]
+                     advanced_search_style, search_on, shown_img_data, history_nav, style_multiple_dropdown, 
+                     browser_history_style, prevent_update, pnns1_chosen, pnns2_chosen]
     
     print("display_images: ", time.time() - elapsed_time) if DEBUG else None  
     return tuple(output_values)
@@ -884,8 +1045,16 @@ def modifying_graph(nutrients_choice, ch_list_graph, pnns1_chosen, pnns2_chosen,
     else:
         df = return_df(country, pnns1_chosen, pnns2_chosen)
         df_N_best = df_sorting(selected_diet, df).head(n_best)
-
-    figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_N_best)
+        
+    if ctx.triggered_id == "dropdown_nutrients_img":
+        # We check the nutrients_choice 
+        nutrients_choice = nutrients_choice if nutrients_choice not in [None, []] else nutrients
+        # We use the patch
+        patched_figure = Patch()
+        figure = patch_graphic(patched_figure, df, df_N_best, ch_list_graph, nutrients_choice, ["A", "B"])
+    
+    else : 
+        figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_N_best)
     
     print("modifying_graph: ", time.time() - elapsed_time) if DEBUG else None 
     
@@ -918,7 +1087,8 @@ def left_panel_display(n_clicks):
     
 @app.callback(
     Output('images_gestion', 'style', allow_duplicate=True),
-    Output('browser_history_div', 'style'),
+    Output('browser_history_div', 'style', allow_duplicate=True),
+    Output('advanced_search_div', 'style', allow_duplicate=True),
     Output('browser_table', 'data'),
     Output('browser_table', 'columns'),
     Output('browser_table', 'selected_rows'),
@@ -949,6 +1119,7 @@ def browsing_history(clicks, selected_rows, history_nav, country, type_search_pr
     if ctx.triggered_id == "browsing_button":
         
         style_images_gestion = {'display':'None'}
+        advanced_search_style = {'display':'None'}
         style_browser_history = {'display':'block'}
         selected_rows = []
         country = dash.no_update
@@ -997,7 +1168,9 @@ def browsing_history(clicks, selected_rows, history_nav, country, type_search_pr
         style_images_gestion = {'display': 'block', 'flex-direction': 'row', 'width': '100%'}
         style_browser_history = {'display':'None'}            
             
-    output_values = [style_images_gestion, style_browser_history, df_history_nav, columns, selected_rows, country, pnns1, pnns2, loading_history, search_bar, *clicks_diet]
+    output_values = [style_images_gestion, style_browser_history, advanced_search_style,
+                     df_history_nav, columns, selected_rows, country, pnns1, pnns2, 
+                     loading_history, search_bar, *clicks_diet]
     
     print("browsing_history", time.time() - elapsed_time) if DEBUG else None  
     return tuple(output_values)

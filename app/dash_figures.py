@@ -30,6 +30,74 @@ def empty_figure():
                         font=dict(color="Black", size=20))
     return fig
 
+def blank_figure():
+    """
+        Just creating the template
+    """
+    nutrients = ["fat_100g", "saturated-fat_100g", "carbohydrates_100g", "fiber_100g", "proteins_100g", "salt_100g", "macronutrients_100g"]
+
+    # To put Energy and the nutrients on the same graph but with differents scales
+    figure = make_subplots(specs=[[{"secondary_y": True}]])
+
+    figure_energy = px.violin(box=False) 
+    figure_others = px.violin(box=False) 
+
+    figure_others.update_traces(width = 1)
+        
+    figure_energy.update_traces(marker = dict(color = "red"), hovertemplate='<br>Product name: %{customdata}<br>energy_100g = %{y}')
+    figure_others.update_traces(marker = dict(color = "green"), hovertemplate='<br>Product name: %{customdata}<br>%{x}: %{y}')
+            
+            
+    figure_energy_selected = px.strip()
+    figure_others_selected = px.strip()
+    figure_energy_selected.update_traces(hovertemplate='<br>Product name: %{customdata}<br>energy_100g = %{y}')
+    figure_others_selected.update_traces(hovertemplate='<br>Product name: %{customdata}<br>%{x}: %{y}')
+            
+    for fig in [figure_energy_selected, figure_others_selected]:   
+        fig.update_traces(marker = dict(color = "blue"), 
+                            marker_size=8, name="Selected", 
+                            marker_line_color="black", marker_line_width=2)
+                         
+    for i in range(len(figure_energy.data)):
+        figure.add_trace(figure_energy.data[i], secondary_y=False)
+        figure.add_trace(figure_others.data[i], secondary_y=True)
+        figure.add_trace(figure_energy_selected.data[i], secondary_y=False)
+        figure.add_trace(figure_others_selected.data[i], secondary_y=True)
+
+    # Update of figure layout
+    figure.update_layout(
+        yaxis_title="g/100g",
+        title=dict(text='', font=dict(size=24, color="black"), x=0.5, xanchor='center'),
+        font=dict(size=18, color="black"),
+        plot_bgcolor='white',
+    )
+
+        # Set y-axes titles and background
+    figure.update_yaxes(
+        title_text="g/100g (energy)", 
+        secondary_y=False,
+        mirror=True,
+        ticks='outside',
+        showline=True,
+        linecolor='black',
+        gridcolor='lightgrey')
+
+    figure.update_yaxes(
+        title_text="g/100g (nutrients)", 
+        secondary_y=True) 
+
+    # Set x-axe ticks
+    figure.update_xaxes(
+        ticktext=["energy_100g"] + nutrients, 
+        tickvals=[i for i in range(len(nutrients) + 1)],
+        mirror=True,
+        ticks='outside',
+        showline=True,
+        linecolor='black',
+        gridcolor='lightgrey')
+
+    return figure
+
 def figure_radar_plot(df_slice, nutrients, nutrients_choice, df_selected_products):
 
     # We retrieve the mediane for the nutrients
@@ -264,3 +332,38 @@ def create_figure_products(df, list_nutrients, selected_nutrients, selected_grap
     # Default, but shouldn't occur
     else:
         return empty_figure()
+
+def patch_graphic(patched_figure, df_whole, df_product, ch_list_graph, nutrients_list, type_modification):
+    """
+        Function that modify the patch figure
+        Take as arguments, the dataframes to use
+        The type of figure
+        The type of modification (list):
+        A: Change for primary data
+        B: Change to the product data
+        
+        Return the patched_figure
+    """
+    
+    #A, B: For the positions in the graph: 1 and 2 are for the whole data, 3 and 4 for the selected produced
+    for row in type_modification:
+        if row == "A":
+            df = df_whole.copy()
+            patched_figure['layout']['title']['text'] = f'Distribution of macronutrients of {df.shape[0]} products'
+            A, B = 0, 1
+
+        elif row == "B":
+            df = df_product.copy()
+            A, B = 2, 3
+        
+        else:
+            continue
+        product_name_list = [[value] for value in df["product_name"].values] 
+        patched_figure['data'][A]['customdata'] = product_name_list
+        patched_figure['data'][B]['customdata'] = product_name_list * len(nutrients_list)
+
+        patched_figure['data'][A]['y'] = [value for value in df["energy_100g"].values]
+        patched_figure['data'][B]['x'] = [nut for nut in nutrients_list for value in df[nut].values]
+        patched_figure['data'][B]['y'] = [value for nut in nutrients_list for value in df[nut].values]
+
+    return patched_figure
