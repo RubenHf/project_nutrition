@@ -7,11 +7,11 @@ import time
 from collections import Counter 
 
 # Importing the functions
-from app.dash_figures import create_figure_products, blank_figure, patch_graphic
-from app.dash_components import generate_slider, generate_dropdown, generate_table, generate_radio_items, generate_input, generate_button
-from app.data_handling import pnns_groups_options, return_df, get_image, get_code, df_sorting, get_nutriscore_image
-from app.data_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
-from app.data_handling import generate_texte_image, get_texte_product, testing_img
+from functions.dash_figures import create_figure_products, blank_figure, patch_graphic
+from functions.dash_components import generate_slider, generate_dropdown, generate_table, generate_radio_items, generate_input, generate_button
+from functions.data_handling import pnns_groups_options, return_df, get_image, get_code, df_sorting, get_nutriscore_image
+from functions.data_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
+from functions.data_handling import generate_texte_image, get_texte_product, testing_img
 
 # Linked to the external CSS file 
 
