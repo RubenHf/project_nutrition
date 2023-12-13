@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import plotly.express as px
 from plotly.subplots import make_subplots
 from io import StringIO
@@ -367,3 +368,33 @@ def patch_graphic(patched_figure, df_whole, df_product, ch_list_graph, nutrients
         patched_figure['data'][B]['y'] = [value for nut in nutrients_list for value in df[nut].values]
 
     return patched_figure
+
+
+def figure_result_model(df):
+    """
+        Function showing the probabilities (result) of the classification model (pnns1 or pnns2)
+    """
+    
+    df_sorted = df.sort_values("probabilities")
+    # To extract the pnns_groups (either 1 or 2) and the probabilities
+    categories = list(df_sorted[df.columns[0]])
+    probabilities = np.round(df_sorted[df_sorted.columns[1]]*100)
+
+    figure = px.bar(x = probabilities, y = categories, orientation='h')
+
+    # Update figure layout
+    figure.update_layout(
+                yaxis_title=None, xaxis_title="Probabilities to be correct (%)",
+                title=dict(text=f'Results of prediction model from the image:',
+                           font=dict(size=24, color="black"), x=0.5, xanchor='center'),
+                font=dict(size=18, color="black"),
+                plot_bgcolor='lightgray',
+                paper_bgcolor='#F0F0F0',
+            )
+    figure.update_yaxes(showline=True, linecolor='black')
+    figure.update_xaxes(showline=True, linecolor='black', range = [0, 100])
+
+    # Update the hovertemplate information
+    figure.update_traces(hovertemplate='<br>Pnns_groups: %{y}<br>Probability: %{x}%')
+
+    return figure

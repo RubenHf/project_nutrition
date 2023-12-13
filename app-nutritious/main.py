@@ -1,13 +1,14 @@
 ﻿import dash
 from dash import Dash, html, dcc, Output, Input, State, ctx, Patch
 import pandas as pd
+import requests
 import math
 from io import StringIO
 import time
 from collections import Counter 
 
 # Importing the functions
-from functions.dash_figures import create_figure_products, blank_figure, patch_graphic
+from functions.dash_figures import create_figure_products, blank_figure, patch_graphic, figure_result_model
 from functions.dash_components import generate_slider, generate_dropdown, generate_table, generate_radio_items, generate_input, generate_button
 from functions.data_handling import pnns_groups_options, return_df, get_image, get_code, df_sorting, get_nutriscore_image
 from functions.data_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
@@ -23,7 +24,7 @@ server = app.server
 
 app.title = 'Nutritious app'
 
-versionning = "version: 0.6.6"
+versionning = "version: 0.7.0"
 
 DEBUG = True
 
@@ -60,6 +61,9 @@ style24 = {'font-size': '24px', 'color': 'black', 'width': '100%',
 
 style16 = {'font-size': '16px', 'color': 'black', 'width': '100%', 
         'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
+
+style16_nd = {'font-size': '16px', 'color': 'black', 'width': '100%', 
+        'textAlign': 'center', 'margin': '0px', 'border': '1px solid black', 'background-color': 'lightgray'}
 
 style15 = {'align-items': 'center', 'justify-content': 'center', 'border': '1px solid black',
         'font-size': '15px', 'color': 'black', 'width': '100%', 
@@ -105,6 +109,11 @@ app.layout = html.Div([
                                      default_search_option, 'type_search_product')
             ], style={'margin': '0 auto', 'border': '1px solid black', 'direction': 'ltr'}),
 
+            # pnns_groups_search with an image // Button
+            html.Div([
+                generate_button("Picture search (in beta) 📷", "picture_search_button", style15)
+            ], style={'margin': '0 auto'}),
+            
             # Advanced searchbar products // Button
             html.Div([
                 generate_button("Advanced search 🔍", "advanced_search_button", style15)
@@ -284,7 +293,7 @@ app.layout = html.Div([
                 html.Hr(style={'border-top': '4px solid black'}),  
                 # RadioItems of graphic option
                 html.Div([
-                    generate_radio_items(['Radarplot', 'Distribution', 'Products'], 
+                    generate_radio_items(['Distribution', 'Products'],  #'Radarplot', 
                                          default_graphic_option, 'check_list_graph_img')
                 ], style={'margin': 'auto'}),
 
@@ -302,12 +311,57 @@ app.layout = html.Div([
 
         ], style={'display': 'block', 'flex-direction': 'row', 'width': '100%'},  id='images_gestion'),
 
-    # To display the browser history
-    html.Div([
-        html.Div(
-        generate_table(None, 20, 'browser_table'),  
-        )
-    ], style={'display': 'None'},  id='browser_history_div'),
+        # To display the browser history
+        html.Div([
+            html.Div(
+                generate_table(None, 20, 'browser_table'),  
+            )
+        ], style={'display': 'None'},  id='browser_history_div'),
+        
+        # To display the search by picture
+        
+        html.Div([
+            # Maximum MB = 15
+            dcc.Upload([
+                    generate_button(html.Strong("Upload image [max 15MB] (.JPEG, .PNG, .JPG)"), "upload_img_button", style16_nd),
+                ], max_size = 15 * 1024 * 1024, # Maximum file size to 15MB
+                   accept=".jpeg, .png, .jpg",  # Accepted file types
+                   style={'margin': '0 auto', 'float': 'center'}, id="upload_img_data"),
+    
+            # To show the uploaded image
+            html.Div(id='uploaded_img', style={'margin': '0 auto', 'text-align': 'center'}),
+            
+            # To have the 2 buttons on the same row
+            html.Div([
+                
+                html.Div([
+                    generate_button(html.Strong("Search pnns_groups_1"), "search_pnns1_img", {'display': 'None'}),
+                ], style={'margin': '0 auto', 'text-align': 'left', 'width':'50%'}),
+                
+                html.Div([
+                    generate_button(html.Strong("Search pnns_groups_2"), "search_pnns2_img", {'display': 'None'}),
+                ], style={'margin': '0 auto', 'text-align': 'right', 'width':'50%'}),
+                
+            ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
+            
+            html.Div([
+                    generate_button(html.Strong("Clear image"), "clear_img_button", {'display': 'None'}),
+                ], style={'margin': '0 auto', 'float': 'center'}),
+            
+            # Div for the results
+            html.Div([
+                html.Div(style = {'margin-top': '10px'}),
+            
+                dcc.Graph(
+                    id='model_figure_result',
+                    config={'displayModeBar': False}
+                ),
+
+            ], style={'display':'None'}, id="result_model_image"),
+            
+            
+        ], style={'display':'None'},
+        id='picture_search_div')
             
     ], style={'flex-direction': 'row', 'width': '100%', 'background-color': '#F0F0F0', 
               'overflowY': 'scroll', 'height': '100vh', 'flex': '2'}),
@@ -555,9 +609,9 @@ def click_pnns_showing(*args):
         
     # To modify style when navigating with a selected product
     elif ctx.triggered_id in ["pnns1_chosen", "pnns2_chosen"]:
-        try:
+        if pnns2_chosen != None:
             output_style = changing_style_pnns_button(output_style, pnns2_chosen)
-        except:
+        elif pnns1_chosen != None:
             output_style = changing_style_pnns_button(output_style, pnns1_chosen)
     
     # When a pnns_groups_1 was clicked on
@@ -695,6 +749,7 @@ def update_sliders(pnns1_chosen, pnns2_chosen, n_clicks, n_clicks_search, countr
     Output('prevent_update', 'data'),
     Output('pnns1_chosen', 'data', allow_duplicate=True),
     Output('pnns2_chosen', 'data', allow_duplicate=True),
+    Output('picture_search_div', 'style', allow_duplicate=True),
     
     *[Input(f'{diet}_div', 'n_clicks') for diet in diets],
     *[Input(f'{diet}_img_{i}', 'n_clicks') for diet in diets for i in range(20)],
@@ -746,6 +801,7 @@ def display_images(*args):
     search_on = False if search_on else dash.no_update
     selected_diet = None if selected_diet != None else dash.no_update
     style_multiple_dropdown = no_display
+    style_picture_search_div = no_display
     browser_history_style = no_display
     
      # We take a Patch() to modify only some elements of the figure
@@ -988,7 +1044,7 @@ def display_images(*args):
                      figure, graphic_gestion_style, selected_diet, selected_product_style, 
                      selected_product_img, selected_product_title, selected_product_texte,
                      advanced_search_style, search_on, shown_img_data, history_nav, style_multiple_dropdown, 
-                     browser_history_style, prevent_update, pnns1_chosen, pnns2_chosen]
+                     browser_history_style, prevent_update, pnns1_chosen, pnns2_chosen, style_picture_search_div]
     
     print("display_images: ", time.time() - elapsed_time) if DEBUG else None  
     return tuple(output_values)
@@ -1174,6 +1230,118 @@ def browsing_history(clicks, selected_rows, history_nav, country, type_search_pr
     
     print("browsing_history", time.time() - elapsed_time) if DEBUG else None  
     return tuple(output_values)
+
+@app.callback(
+    Output('picture_search_div', 'style', allow_duplicate=True),
+    Output('advanced_search_div', 'style', allow_duplicate=True),
+    Output('browser_history_div', 'style', allow_duplicate=True),
+    Output('images_gestion', 'style', allow_duplicate=True),
+    Output('upload_img_button','style'),
+    Output('clear_img_button','style'),
+    Output('search_pnns1_img','style'),
+    Output('search_pnns2_img','style'),
+    Output('result_model_image','style'),
+    Output('uploaded_img','children'),
+    Output('model_figure_result','figure'),
+    Output('pnns1_chosen', 'data', allow_duplicate=True),
+    Output('pnns2_chosen', 'data', allow_duplicate=True),
+    
+    Input('picture_search_button','n_clicks'),
+    Input('upload_img_button','n_clicks'),
+    Input('clear_img_button','n_clicks'),
+    Input('search_pnns1_img','n_clicks'),
+    Input('search_pnns2_img','n_clicks'),
+    Input('upload_img_data', 'contents'),
+    Input('model_figure_result','clickData'),
+    
+    prevent_initial_call=True,
+)
+# Will handle everything linked to the search by a picture
+def picture_search_div(*args):
+    elapsed_time = time.time() if DEBUG else None
+    
+    display_no_show = {'display':'None'}
+    
+    # We display the div
+    style_div = {'float': 'center', 'display': 'block', 'flex-direction': 'row', 'width': '100%'}
+    style_others_div = [display_no_show]*3
+                     
+    image_contents = args[-2]
+    clicked_graphic = args[-1]
+    
+    uploaded_img_div = dash.no_update
+    style_search_pnns1 = dash.no_update
+    style_search_pnns2 = dash.no_update
+    style_upload_button = dash.no_update
+    style_clear_button = dash.no_update
+    style_result_model = display_no_show
+    figure = dash.no_update
+    pnns1_chosen, pnns2_chosen = dash.no_update, dash.no_update 
+    
+    if ctx.triggered_id == "upload_img_button":
+        uploaded_img_div = None
+        image_contents = None
+    
+    elif ctx.triggered_id == "upload_img_data":
+        style_upload_button = display_no_show
+        style_clear_button = style16_nd
+        style_search_pnns1 = style16_nd
+        style_search_pnns2 = style16_nd
+        
+        uploaded_img_div = html.Img(src=image_contents, style={'width': '500px', 'height':'500px'})
+        
+    elif ctx.triggered_id in ["clear_img_button", "picture_search_button"]:
+        style_upload_button = style16_nd
+        style_clear_button = display_no_show
+        style_search_pnns1 = display_no_show
+        style_search_pnns2 = display_no_show
+        uploaded_img_div = None
+        image_contents = None
+        
+    elif ctx.triggered_id in ["search_pnns1_img", "search_pnns2_img"]:
+        style_result_model = {'display': 'flex', 'flex-direction': 'column', 'width': '100%', 'margin-top':'20px',
+                              'border-bottom': '1px solid black', 'border-top': '4px solid black'}
+        image_contents = {"base64_image": image_contents}
+        
+        # We send the image to the model
+        if ctx.triggered_id == "search_pnns1_img":
+            response = requests.post("https://fast-api-pnns1-cd370c7762e4.herokuapp.com/process-image/", data=image_contents)
+        elif ctx.triggered_id == "search_pnns2_img":
+            response = requests.post("https://fast-api-pnns2-d692c6a24a80.herokuapp.com/process-image/", data=image_contents)
+        
+        try:
+            # We put the result into a dataframe
+            df_result = pd.DataFrame(response.json())
+
+            # We show the result with a graphic
+            # For now, only 3 results, could be expanded with a button
+            figure = figure_result_model(df_result.iloc[:3])
+        
+        except:
+            html.A("Format not compatible")
+        
+    elif ctx.triggered_id == "model_figure_result":
+        
+        # We hide the div
+        style_div = display_no_show
+        
+        # We extract the chosen result by the user 
+        pnns_chosen = clicked_graphic["points"][0]["y"]
+        
+        # We attribute the pnns1 and 2 associated
+        if pnns_chosen in pnns_groups_1:
+            pnns1_chosen = pnns_chosen
+            pnns2_chosen = None
+        elif pnns_chosen in pnns_groups_2:
+            pnns1_chosen = next((key for key, value in pnns_groups.items() if pnns_chosen in value), None)
+            pnns2_chosen = pnns_chosen
+    
+    output_values = [style_div, *style_others_div, style_upload_button, style_clear_button, style_search_pnns1, 
+                     style_search_pnns2, style_result_model, uploaded_img_div, figure, pnns1_chosen, pnns2_chosen]
+    
+    print("picture_search_div", time.time() - elapsed_time) if DEBUG else None  
+
+    return tuple(output_values) 
 
 # Run the app
 if __name__ == '__main__':

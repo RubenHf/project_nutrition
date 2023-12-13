@@ -1,3 +1,5 @@
+Version 0.7.0
+Addition of 2 images models that will classifiy an image into the pnns_groups_1 or 2
 Version 0.6.5
 -Correction: Searching for a product was Right to left, now it is back to left to right.
 -Front-end: Changing the arrow for returning the menu to a 3 bars display.
