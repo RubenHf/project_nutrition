@@ -397,6 +397,8 @@ except:
     file_path = os.path.join(os.getcwd(), 'files', 'cleaned_data.csv')
     # Debugging prints
     print("Current Working Directory:", os.getcwd())
+    print(os.listdir(os.getcwd()))
+    print(os.listdir(file_path))
     print("__file__ value:", __file__)
     print("script_dir:", script_dir)
     print("app_dir:", app_dir)
