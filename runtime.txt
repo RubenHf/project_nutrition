@@ -1,4 +1,0 @@
-./app-nutritious/requirements.txt
-./app-classification-pnns1/requirements.txt
-./app-classification-pnns2/requirements.txt
-./app-classification-front/requirements.txt
