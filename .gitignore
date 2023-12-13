@@ -8,3 +8,4 @@ env/
 notebooks/app/
 notebooks/.ipynb_checkpoints/
 notebooks/assets/
+notebooks/development models/
