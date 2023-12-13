@@ -19,7 +19,7 @@ def load_model(model_save_path):
         preprocess_input = pickle.load(f)
     return model, preprocess_input
 
-loaded_model, loaded_preprocess_input = load_model("./model_classification_best_weights.h5")
+loaded_model, loaded_preprocess_input = load_model("model/model_classification_best_weights.h5")
 
 def preprocess_image(image, preprocess_input):
     # Apply the same preprocessing as during training
