@@ -1,1 +1,1 @@
-web: gunicorn app-nutritious.main:server
+web: gunicorn main:server
