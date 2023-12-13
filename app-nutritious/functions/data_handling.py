@@ -395,9 +395,12 @@ except:
 
     # Define the path to the file in the /files directory
     file_path = os.path.join(app_dir, 'app-nutritious', 'files', 'cleaned_data.csv')
-    print(script_dir)
-    print(app_dir)
-    print(file_path)
+    # Debugging prints
+    print("Current Working Directory:", os.getcwd())
+    print("__file__ value:", __file__)
+    print("script_dir:", script_dir)
+    print("app_dir:", app_dir)
+    print("file_path:", file_path)
     # Now you can use the file_path to access your file
     with open(file_path, 'r') as file:
         data = pd.read_csv(file_path, sep = "\t")
