@@ -380,12 +380,7 @@ def find_key_by_value(my_dict, value):
     return None 
 
 try:
-    # Get the current directory of the notebook
-    file_dir = os.getcwd()
-    app_dir = os.path.dirname(file_dir)
-
     # Define the path to the file in the /files directory
-    #file_path = os.path.join(app_dir, 'files', 'cleaned_data.csv')
     file_path='cleaned_data.csv'
     # Now you can use the file_path to access your file
     with open(file_path, 'r') as file:
@@ -396,10 +391,11 @@ except:
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Go up one level to the parent directory (assuming the script is in the 'app' directory)
-    app_dir = os.path.dirname(script_dir)
+    #app_dir = os.path.dirname(script_dir)
 
     # Define the path to the file in the /files directory
-    file_path = os.path.join(app_dir, 'files', 'cleaned_data.csv')
+    #file_path = os.path.join(app_dir, 'files', 'cleaned_data.csv')
+    file_path = os.path.join(script_dir, 'files', 'cleaned_data.csv')
 
     # Now you can use the file_path to access your file
     with open(file_path, 'r') as file:
