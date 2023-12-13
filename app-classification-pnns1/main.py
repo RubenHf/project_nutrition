@@ -5,7 +5,6 @@ import base64
 import tensorflow as tf
 import pickle
 import pandas as pd
-from PIL import Image
 
 import numpy as np
 
@@ -67,11 +66,11 @@ def process_image(file_contents: bytes, file_extension: str):
     # Return a dictionary or any other data you want
     return {"status": "success", "result": str(result)}
 
-def best_predictions(model_pnns, file_contents: bytes, preprocess_input, threshold = 0.75):
+def best_predictions(model_pnns, file_contents: bytes, preprocess_input, threshold = 1):
     image_proba_df = img_prediction_model_pnns(model_pnns, BytesIO(file_contents), preprocess_input)
     
     # We filter on the threshold (we want the pnns with a cummulated proba of "threshold")
-    index = image_proba_df[image_proba_df["Probability"].cumsum() <= threshold].index
+    index = image_proba_df[image_proba_df["probabilities"].cumsum() <= threshold].index
     
     image_proba_df = image_proba_df[image_proba_df.index.isin(index)]
     
