@@ -394,7 +394,7 @@ except:
     app_dir = os.path.dirname(script_dir)
 
     # Define the path to the file in the /files directory
-    file_path = os.path.join(app_dir, 'app-nutritious', 'files', 'cleaned_data.csv')
+    file_path = os.path.join(os.getcwd(), 'files', 'cleaned_data.csv')
     # Debugging prints
     print("Current Working Directory:", os.getcwd())
     print("__file__ value:", __file__)
