@@ -5,6 +5,7 @@ import base64
 import tensorflow as tf
 import pickle
 import pandas as pd
+from PIL import Image
 
 import numpy as np
 
