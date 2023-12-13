@@ -15,7 +15,7 @@ app = FastAPI()
 
 def load_model(model_save_path):
     model = tf.keras.models.load_model(model_save_path)
-    with open("preprocess_input.pkl", "rb") as f:
+    with open("model/preprocess_input.pkl", "rb") as f:
         preprocess_input = pickle.load(f)
     return model, preprocess_input
 
