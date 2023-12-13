@@ -394,15 +394,8 @@ except:
     app_dir = os.path.dirname(script_dir)
 
     # Define the path to the file in the /files directory
-    file_path = os.path.join(os.getcwd(), 'files', 'cleaned_data.csv')
-    # Debugging prints
-    print("Current Working Directory:", os.getcwd())
-    print(os.listdir(os.getcwd()))
-    print(os.listdir(file_path))
-    print("__file__ value:", __file__)
-    print("script_dir:", script_dir)
-    print("app_dir:", app_dir)
-    print("file_path:", file_path)
+    file_path = os.path.join(app_dir, 'files_dash', 'cleaned_data.csv')
+
     # Now you can use the file_path to access your file
     with open(file_path, 'r') as file:
         data = pd.read_csv(file_path, sep = "\t")
