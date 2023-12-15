@@ -13,6 +13,8 @@ from functions.dash_components import generate_slider, generate_dropdown, genera
 from functions.data_handling import pnns_groups_options, return_df, get_image, get_code, df_sorting, get_nutriscore_image
 from functions.data_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
 from functions.data_handling import generate_texte_image, get_texte_product, testing_img
+from functions.language import get_translate, get_languages_options
+from frontend.left_side import generating_front_side
 
 # Linked to the external CSS file 
 
@@ -24,11 +26,19 @@ server = app.server
 
 app.title = 'Nutritious app'
 
-versionning = "version: 0.7.0"
+versionning = "0.7.1"
 
 DEBUG = True
 
-products_availability = "Referenced products: " + str(get_data().shape[0])
+# Set default language
+initial_language = 'en'
+
+option_languages = get_languages_options()
+
+# Retrieve language dictionnary
+translations = get_translate()
+
+products_availability = str(get_data().shape[0])
 
 nutrients = ["fat_100g", "saturated-fat_100g", "carbohydrates_100g", "fiber_100g", "proteins_100g", "salt_100g", "macronutrients_100g"]
 
@@ -38,10 +48,10 @@ diets = ["Healthier foods", "Fiber rich foods", "Low sugar foods", "Protein rich
 
 # Default setup
 default_country, default_pnns1, default_diet = "France", "Fruits and vegetables", "Healthier foods" 
-default_graphic_option, default_search_option = "Distribution", "Product name"
+default_graphic_option, default_search_option = "Distribution", "product_name"
 
 # Generate list of unique countries and number of products
-unique_countries = products_by_countries()
+unique_countries = products_by_countries(initial_language)
 
 # Generate pnns_groups 1 and 2, and sorted
 pnns_groups_1 = get_pnns_groups_1()
@@ -74,139 +84,45 @@ style10 = {'font-size': '10px', 'color': 'black', 'width': '100%', 'display':'no
 
 app.layout = html.Div([
     # Left side
-    html.Div(id='left_panel', children=[    
-        html.Div(id='left_panel_div1', children=[  
-            # For closing or opening the left panel
-            html.Button('←', id='arrow_button_panel', 
-                style={'font-size': '48px', 'padding': '0', 'margin': '0', 'border': 'none'})
-        ]),
-    
-        html.Div(id='left_panel_div2', children=[     
-            html.Div(
-                html.Img(src=dash.get_asset_url('pomme.jpeg'), 
-                     style={'width': '300px', 'height': '300px'}),
-                style={'textAlign': 'center'}),
-
-            # Title
-            html.Div(className='row', children="Nutritious app",
-                     style={'textAlign': 'center', 'color': 'black', 'fontSize': 48}),
-
-            # Horizontale line
-            html.Hr(style={'border-top': '4px solid black'}),  
-
-                # Dropdown for the countries // Dropdown
-            html.Div([
-                generate_dropdown(default_country, unique_countries, "Choose a country", False, 'dropdown_country', False)
-            ], style={'margin': '0 auto', 'border': '1px solid black'}),
-
-            # Searchbar products // Dropdown
-            html.Div([
-                generate_dropdown(None, [], "Search a product", False, 'search_bar')
-            ], style={'margin': '0 auto', 'border': '1px solid black', 'direction': 'ltr'}),
-                            # RadioItems of graphic option
-            html.Div([
-                generate_radio_items(['Product name', 'Product code'], 
-                                     default_search_option, 'type_search_product')
-            ], style={'margin': '0 auto', 'border': '1px solid black', 'direction': 'ltr'}),
-
-            # pnns_groups_search with an image // Button
-            html.Div([
-                generate_button("Picture search (in beta) 📷", "picture_search_button", style15)
-            ], style={'margin': '0 auto'}),
-            
-            # Advanced searchbar products // Button
-            html.Div([
-                generate_button("Advanced search 🔍", "advanced_search_button", style15)
-            ], style={'margin': '0 auto'}),
-            
-            # History button
-            html.Div([
-                generate_button("Browsing history", "browsing_button", style15)
-            ], style={'margin': '0 auto', 'margin-bottom': '20px'}),
-
-            html.Div([
-                dcc.Loading(id="loading_section_pnns", type="default", children = [
-                    html.Div([
-                        generate_button(pnns1["label"], pnns1["value"], style16),
-                        generate_button(pnns2["label"], pnns2["value"], style10)
-                    ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'}) 
-
-                    if y == 0 and str(pnns1["value"]) != str(pnns2["value"]) else 
-
-                        generate_button(pnns1["label"], pnns1["value"], style16)
-
-                    if str(pnns1["value"]) == str(pnns2["value"]) else
-
-                        generate_button(pnns2["label"], pnns2["value"], style10)
-
-                    for pnns1 in pnns_groups_options(default_country, "pnns_groups_1")
-                    for y, pnns2 in enumerate(pnns_groups_options(default_country, "pnns_groups_2", pnns1["value"]))
-                ]),
-            ]),
-
-             dcc.Dropdown(
-                id='dropdown_number_product',
-                options=[
-                    {'label': 'Displaying 5 products', 'value': 5},
-                    {'label': 'Displaying 10 products', 'value': 10},
-                    {'label': 'Displaying 15 products', 'value': 15},
-                    {'label': 'Displaying 20 products', 'value': 20},
-                ],
-                clearable=False,
-                value=10,  # Set the default value
-                style={'font-size': '20px', 'color': 'black', 'cursor': 'pointer',  
-                       'textAlign': 'center', 'border': '1px solid black'}
-            ),
-
-            # Informations
-            html.Div([
-                html.Div(className='row', children="Ruben HALIFA"),
-
-                html.Div(className='row', children=versionning),
-
-                html.Div(className='row', children=products_availability),
-            ], style={'textAlign': 'left', 'color': 'black', 'fontSize': 12}),
-        ]),
-        ], style={'background-color': '#F0F0F0', 'overflowY': 'scroll', 'height': '100vh', 'flex': '1', 'direction': 'rtl',
-                 'border-right': '1px solid black', 'margin':'0px'}),
+    generating_front_side(option_languages, translations, unique_countries, pnns_groups_1, pnns_groups_2, pnns_groups, products_availability),
 
     # Contents on the right side
     html.Div([
 
             html.Div([
-                html.Div([html.Strong("ADVANCED SEARCH")], 
+                html.Div([html.Strong(translations[initial_language]['advanced_search_label'])], 
                                      style=style24),
                 
                 # Dropdown for the pnns_groups_1
                 html.Div([
-                    generate_dropdown(None, pnns_groups_1, "Choose a PNNS group 1 (optional)", False, 'dropdown_pnns1')
+                    generate_dropdown(None, pnns_groups_1, translations[initial_language]['choose_pnns_group_1'], False, 'dropdown_pnns1')
                 ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
 
                 # Dropdown for the pnns_groups_2
                 html.Div([
-                    generate_dropdown(None, [], "Choose a PNNS group 2 (optional)", False, 'dropdown_pnns2')
+                    generate_dropdown(None, [], translations[initial_language]['choose_pnns_group_2'], False, 'dropdown_pnns2')
                 ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
                 
                 # Input to search product
                 html.Div([
-                    generate_input("Search a product (e.g. 'milk') (optional)", "input_search_adv")
+                    generate_input(translations[initial_language]['search_product_optional'], "input_search_adv")
                 ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
 
                 # Dropdown for the diet
                 html.Div([
-                    generate_dropdown(None, diets, "Choose a nutritious plan (optional)", False, 'dropdown_diet')
+                    generate_dropdown(None, diets, translations[initial_language]['choose_nutritious_plan'], False, 'dropdown_diet')
                 ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
 
                 # Sliders controling which products we show
                 html.Div([
-                    generate_slider("Energy kcal/100g", 'slider_energy', 3880),
-                    generate_slider("Fat g/100g", 'slider_fat', 100),
-                    generate_slider("Saturated_fat g/100g", 'slider_saturated', 100),
-                    generate_slider("Carbohydrates g/100g", 'slider_carbohydrates', 100),
-                    generate_slider("Fiber g/100g", 'slider_fiber', 100),
-                    generate_slider("Proteins g/100g", 'slider_proteins', 100),
-                    generate_slider("Salt g/100g", 'slider_salt', 100),
-                    generate_slider("Macronutrients g/100g", 'slider_macronutrients', 100)
+                    generate_slider(translations[initial_language]['energy_kcal_100g'], 'slider_energy', 3880),
+                    generate_slider(translations[initial_language]['fat_g_100g'], 'slider_fat', 100),
+                    generate_slider(translations[initial_language]['saturated_fat_g_100g'], 'slider_saturated', 100),
+                    generate_slider(translations[initial_language]['carbohydrates_g_100g'], 'slider_carbohydrates', 100),
+                    generate_slider(translations[initial_language]['fiber_g_100g'], 'slider_fiber', 100),
+                    generate_slider(translations[initial_language]['proteins_g_100g'], 'slider_proteins', 100),
+                    generate_slider(translations[initial_language]['salt_g_100g'], 'slider_salt', 100),
+                    generate_slider(translations[initial_language]['macronutrients_g_100g'], 'slider_macronutrients', 100)
 
                     ], style={'float': 'center', 'width': '500px', 'margin':'0 auto', 'flex-direction': 'row', 'margin-bottom': '20px'}),
 
@@ -217,7 +133,7 @@ app.layout = html.Div([
 
                 # Button to confirm the search 
                 html.Div([
-                    generate_button("Search", "search_confirmation_button", {'width': '200px'})
+                    generate_button(translations[initial_language]['search'], "search_confirmation_button", {'width': '200px'})
                 ], style={'float': 'center', 'font-size': '12px', 'color': 'black', 'width': '200px', 'margin':'0 auto', 
                            'textAlign': 'center', 'border': '1px solid black', 'background-color': 'lightgray'}),
 
@@ -240,12 +156,12 @@ app.layout = html.Div([
 
                     # Searchbar for products with the same product name
                     html.Div([
-                        generate_dropdown(None, [], "Search a product", False, 'multiple_product_dropdown')
+                        generate_dropdown(None, [], translations[initial_language]['search_product'], False, 'multiple_product_dropdown')
                     ], style={'margin': '0 auto', 'border': '1px solid black'}),
                     
                     html.Div([
                         html.Img(id='selected_product_img', src=dash.get_asset_url('no_image.jpg'), 
-                            alt="No image available", style = {'height':'450px', 'width':'450px'}),
+                            alt=translations[initial_language]['no_image_available'], style = {'height':'450px', 'width':'450px'}),
                         html.Div(id='selected_product_texte')
                     ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
 
@@ -253,7 +169,7 @@ app.layout = html.Div([
                     html.Div([
                         html.A( 
                             html.Img(id=f"selected_img_{i}", src=dash.get_asset_url('no_image.jpg'), n_clicks = 0, 
-                                 alt="No image available", style={'height': '150px', 'width': '150px'}),
+                                 alt=translations[initial_language]['no_image_available'], style={'height': '150px', 'width': '150px'}),
                             href='#top_dash')
                         for i in range(4)
                     ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
@@ -276,7 +192,7 @@ app.layout = html.Div([
                             # html.A for having the clickable action on and going back to top
                             html.A( 
                                 html.Img(id=f"{diet}_img_{i}", src=dash.get_asset_url('no_image.jpg'), n_clicks = 0, 
-                                     alt="No image available", style={'height': '200px', 'width': '200px'}),
+                                     alt=translations[initial_language]['no_image_available'], style={'height': '200px', 'width': '200px'}),
                             href='#top_dash'),
                             html.Div(id=f"{diet}_div_{i}")
                                 ]),
@@ -294,17 +210,17 @@ app.layout = html.Div([
                 # RadioItems of graphic option
                 html.Div([
                     generate_radio_items(['Distribution', 'Products'],  #'Radarplot', 
-                                         default_graphic_option, 'check_list_graph_img')
+                                         default_graphic_option, 'check_list_graph_img', translations = translations[initial_language])
                 ], style={'margin': 'auto'}),
 
                 # Dropdown for the macronutrient choice
                 html.Div([
-                    generate_dropdown(None, nutrients, "Choose nutrients", True, 'dropdown_nutrients_img')
+                    generate_dropdown(None, nutrients, translations[initial_language]['choose_nutrients'], True, 'dropdown_nutrients_img')
                 ], style={'margin': '0 auto'}),
 
                 # Figure of macronutriments
                 html.Div([
-                    dcc.Graph(figure = blank_figure(), id="graph_products_img", style={'height': '600px', 'width': '100%', 'float': 'center'}),
+                    dcc.Graph(figure = blank_figure(initial_language), id="graph_products_img", style={'height': '600px', 'width': '100%', 'float': 'center'}),
                 ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
             ]),
 
@@ -323,7 +239,7 @@ app.layout = html.Div([
         html.Div([
             # Maximum MB = 15
             dcc.Upload([
-                    generate_button(html.Strong("Upload image [max 15MB] (.JPEG, .PNG, .JPG)"), "upload_img_button", style16_nd),
+                    generate_button(html.Strong(translations[initial_language]['upload_image']), "upload_img_button", style16_nd),
                 ], max_size = 15 * 1024 * 1024, # Maximum file size to 15MB
                    accept=".jpeg, .png, .jpg",  # Accepted file types
                    style={'margin': '0 auto', 'float': 'center'}, id="upload_img_data"),
@@ -335,17 +251,17 @@ app.layout = html.Div([
             html.Div([
                 
                 html.Div([
-                    generate_button(html.Strong("Search pnns_groups_1"), "search_pnns1_img", {'display': 'None'}),
+                    generate_button(html.Strong(translations[initial_language]['search_pnns_groups_1']), "search_pnns1_img", {'display': 'None'}),
                 ], style={'margin': '0 auto', 'text-align': 'left', 'width':'50%'}),
                 
                 html.Div([
-                    generate_button(html.Strong("Search pnns_groups_2"), "search_pnns2_img", {'display': 'None'}),
+                    generate_button(html.Strong(translations[initial_language]['search_pnns_groups_2']), "search_pnns2_img", {'display': 'None'}),
                 ], style={'margin': '0 auto', 'text-align': 'right', 'width':'50%'}),
                 
             ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
             
             html.Div([
-                    generate_button(html.Strong("Clear image"), "clear_img_button", {'display': 'None'}),
+                    generate_button(html.Strong(translations[initial_language]['clear_image']), "clear_img_button", {'display': 'None'}),
                 ], style={'margin': '0 auto', 'float': 'center'}),
             
             # Div for the results
@@ -377,9 +293,53 @@ app.layout = html.Div([
     dcc.Store(id='loading_history', data=False),
     dcc.Store(id='prevent_update', data=False),
     dcc.Store(id='search_bar_data', data=False),
+    # To handle session memory
+    dcc.Store(id='language_user', data=initial_language),
     
     
 ],id='app-container', style={'justify-content': 'space-between', 'margin': '0', 'padding': '0'})
+
+# When the user changes the language
+@app.callback(
+    Output('language_user', 'data'),
+    Output('dropdown_number_product', 'options'),
+    Output('type_search_product', 'options'),
+    Output('picture_search_button', 'children'),
+    Output('advanced_search_button', 'children'),
+    Output('browsing_button', 'children'),
+    Output('search_bar', 'placeholder'),
+    Output('referencing', 'children'),
+    #Output('images_title', 'children', allow_duplicate=True),
+    *[Output(f'{diet}_div', 'children', allow_duplicate=True) for diet in diets],
+    
+    Input('dropdown_language', 'value'),
+
+    #State('images_title', 'children'),
+    
+    prevent_initial_call=True,
+    )
+def definition_language_user(input_language):
+
+    # Display options 
+    options_display=[
+        {'label': translations[input_language][f'displaying_{n}_products'], 'value': n}
+                    for n in [5, 10, 15, 20]
+                ]
+    options_type_search = [
+            {'label': translations[input_language]['product_name'], 'value': 'product_name'}, 
+            {'label': translations[input_language]['product_code'], 'value': 'product_code'} 
+        ]
+
+    children_picture_search = translations[input_language]['picture_search_beta']
+    children_advanced_search = translations[input_language]['advanced_search']
+    children_browsing_search = translations[input_language]['browsing_history']
+    place_holder_search = translations[input_language]['search_product']
+    children_referencing = f"{translations[input_language]['referenced_products']}: {products_availability}"
+    output_subtitles = [translations[input_language][diet] for diet in diets]
+
+    return (input_language, options_display, options_type_search,
+            children_picture_search, children_advanced_search,children_browsing_search, 
+            place_holder_search, children_referencing, *output_subtitles)
 
 @app.callback(
     Output('sliced_file', 'data'),
@@ -428,11 +388,12 @@ def data_slicing(country, pnns1_chosen, pnns2_chosen, _,
     Input('type_search_product','value'),
     Input('search_bar', 'search_value'), 
     
+    State('language_user', 'data'),
     State('search_bar_data', 'data'),
 )
 
 # We prepare the search_bar, changing when the country choice is different
-def search_bar_option_def(country, dropdown_search, search_bar, search_bar_data):
+def search_bar_option_def(country, dropdown_search, search_bar, language, search_bar_data):
     
     elapsed_time = time.time() if DEBUG else None
     
@@ -452,7 +413,7 @@ def search_bar_option_def(country, dropdown_search, search_bar, search_bar_data)
             # Create the search_bar_option list
             search_bar_data = [
                 {
-                    'label': f"{name} [{count} products]",
+                    'label': f"{name} [{count} {translations[language]['products']}]",
                     'value': name
                 }
                 for name in sorted_names
@@ -496,13 +457,14 @@ def search_bar_option_def(country, dropdown_search, search_bar, search_bar_data)
     Output('multiple_product_dropdown', 'style', allow_duplicate=True),
     
     Input('search_bar', 'value'),
+    State('language_user', 'data'),
     State('type_search_product', 'value'),
     
     prevent_initial_call=True,
 )
 
 # When selected product have multiple possibilities 
-def multiple_product_dropdown(search_bar, dropdown_search):
+def multiple_product_dropdown(search_bar, language, dropdown_search):
     # initialize values
     style_multiple_dropdown = dash.no_update
     option_multiple_dropdown = dash.no_update
@@ -526,7 +488,7 @@ def multiple_product_dropdown(search_bar, dropdown_search):
             # We put the code as value, as they are unique to each product
             option_multiple_dropdown = [
             {
-                'label': html.Div([f"Product code: {row['code']}", 
+                'label': html.Div([f"{translations[language]['product_code']}: {row['code']}", 
                                    get_nutriscore_image(row['nutriscore_score_letter'], style)]),
                 'value': row['code']
             }
@@ -551,6 +513,7 @@ def multiple_product_dropdown(search_bar, dropdown_search):
     Input('loading_history','data'),
     Input('pnns1_chosen', 'data'),
     Input('pnns2_chosen', 'data'),
+    Input('language_user', 'data'),
     
     State('history', 'data'),
     
@@ -573,7 +536,8 @@ def click_pnns_showing(*args):
     style_images_gestion = {'display': 'block', 'flex-direction': 'row', 'width': '100%'}
     
     # We retrieve the last arguments
-    country, history_nav, pnns2_chosen, pnns1_chosen = args[-5], args[-1], args[-2], args[-3] 
+    country, history_nav, language = args[-6], args[-1], args[-2]  
+    pnns2_chosen, pnns1_chosen = args[-3], args[-4]
     
     # Initialize the display to none
     output_style = [pnns2_option_invisible] * len(pnns_groups_2) 
@@ -602,6 +566,22 @@ def click_pnns_showing(*args):
                 i += 1 # We increment
                 
         return output_style
+        
+    # Function returning labels of pnns groups 1 and 2
+    def return_pnns_label():
+        # Product calcul
+        pnns_groups_1_options = pnns_groups_options(country, "pnns_groups_1", language)
+        
+        # New label (= new number of products)
+        label_pnns1 = [pnns1["label"] for pnns1 in pnns_groups_1_options]
+        
+        label_pnns2 = [
+            pnns2["label"]
+            for pnns1 in pnns_groups_1_options
+            for pnns2 in pnns_groups_options(country, "pnns_groups_2", language, pnns1["value"])
+            if str(pnns1["value"]) != str(pnns2["value"])
+        ]
+        return label_pnns1, label_pnns2
     
     # When a pnns_groups_1 or 2 was clicked on
     if ctx.triggered_id in pnns_groups_1 + pnns_groups_2:  
@@ -644,25 +624,26 @@ def click_pnns_showing(*args):
         output_style = changing_style_pnns_button(output_style, pnns)      
     
     # The country was change, we are modifying the title
-    if ctx.triggered_id == 'dropdown_country':
+    elif ctx.triggered_id == 'dropdown_country':
         
         pnns1_chosen, pnns2_chosen = None, None
         
         # We add to the navigation history
         history_nav.insert(0, ["Navigation", country, pnns1_chosen, pnns2_chosen, None, None])
         
-        # Product calcul
-        pnns_groups_1_options = pnns_groups_options(country, "pnns_groups_1")
-        
-        # New label (= new number of products)
-        output_label_pnns1 = [pnns1["label"] for pnns1 in pnns_groups_1_options]
-        
-        output_label_pnns2 = [
-            pnns2["label"]
-            for pnns1 in pnns_groups_1_options
-            for pnns2 in pnns_groups_options(country, "pnns_groups_2", pnns1["value"])
-            if str(pnns1["value"]) != str(pnns2["value"])
-        ]
+        # We actualize the labels
+        output_label_pnns1, output_label_pnns2 = return_pnns_label()
+
+    # Language was changed
+    elif ctx.triggered_id == 'language_user':
+        # We are not modifying those
+        history_nav, pnns2_chosen, pnns1_chosen = dash.no_update, dash.no_update, dash.no_update
+        style_search_div, style_images_gestion = dash.no_update, dash.no_update
+        output_style = [dash.no_update] * len(pnns_groups_2) 
+
+        # We actualize the labels
+        output_label_pnns1, output_label_pnns2 = return_pnns_label()
+
                         
     print("click_pnns_showing", time.time() - elapsed_time) if DEBUG else None
     
@@ -773,6 +754,7 @@ def update_sliders(pnns1_chosen, pnns2_chosen, n_clicks, n_clicks_search, countr
     State('history', 'data'),
     State('prevent_update', 'data'),
     State('input_search_adv', 'value'),
+    State('language_user', 'data'),
     
     prevent_initial_call=True,
 )
@@ -783,7 +765,7 @@ def display_images(*args):
     # We unpack the args
     (pnns1_chosen, pnns2_chosen, country, search_bar, clicked_search, click_advanced_search, value_multiple_dropdown,
      type_search_product, nutrients_choice, ch_list_graph, selected_diet, df_slice, dropdown_diet, search_on, 
-     n_best, shown_img_data, history_nav, prevent_update, user_input) = args[-19:]
+     n_best, shown_img_data, history_nav, prevent_update, user_input, language) = args[-20:]
     
     # Return true if one of the diet was click.
     # It is helping for the browser history
@@ -826,7 +808,7 @@ def display_images(*args):
     if condition_selected_diet_search_navigation: 
         
         for i, diet in enumerate([diet + "_div" for diet in diets]):
-            subtitles[i] = html.Strong(f"{diets[i]}")
+            subtitles[i] = html.Strong(f"{translations[language][diets[i]]}")
             
             if (ctx.triggered_id in ['search_confirmation_button', diet]) or browser_diet: 
                 
@@ -869,7 +851,7 @@ def display_images(*args):
                         styles_images[index] = {'height': '400px', 'width': '400px'}
                         
                         # generate the texte below the image
-                        textes_images[index] = get_texte_product(row)
+                        textes_images[index] = get_texte_product(row, language)
                         
                         # We retrieve the image url via the code
                         images[index] = get_image(str(row.iloc[0]))
@@ -881,7 +863,7 @@ def display_images(*args):
                             # Creating a figure of the data distribution 
                     
                     figure = patch_graphic(patched_figure, df, df_N_best, 
-                                                           ch_list_graph, nutrients_choice, ["A", "B"])
+                                                           ch_list_graph, nutrients_choice, ["A", "B"], language)
 
                     graphic_gestion_style = {'display':'block'}
         
@@ -889,7 +871,8 @@ def display_images(*args):
                 elif selected_diet == "All":
                     subtitles, images, styles_images, textes_images = generate_texte_image(df, diets, n_best, 
                                                                                subtitles, images, 
-                                                                               styles_images, textes_images)
+                                                                               styles_images, textes_images,
+                                                                               language)
                     # Checking each images
                     images = testing_img(images)
                     # Replace images
@@ -900,11 +883,12 @@ def display_images(*args):
     # When navigating on the left panel    
     elif ctx.triggered_id in ['pnns1_chosen', 'pnns2_chosen', 'dropdown_country']:
         
-        title = html.Strong("BEST RECOMMENDED PRODUCTS BY CATEGORY")
+        title = html.Strong(translations[language]['best_recommended_products'])
         
         subtitles, images, styles_images, textes_images = generate_texte_image(df, diets, n_best, 
                                                                                subtitles, images, 
-                                                                               styles_images, textes_images)
+                                                                               styles_images, textes_images,
+                                                                               language)
         
         # Checking each images
         images = testing_img(images)
@@ -970,7 +954,7 @@ def display_images(*args):
                                for i in range(0, 4)]
 
             selected_product_title = html.Strong(product_name)
-            selected_product_texte = get_texte_product(df_product.iloc[0])
+            selected_product_texte = get_texte_product(df_product.iloc[0], language)
 
             pnns1 = df_product["pnns_groups_1"].values[0]
             pnns2 = df_product["pnns_groups_2"].values[0]
@@ -987,16 +971,17 @@ def display_images(*args):
                 textes_images = [dash.no_update] * TOTAL_IMAGES
 
                 figure = patch_graphic(patched_figure, None, df_product, 
-                                               ch_list_graph, nutrients_choice, ["B"])
+                                               ch_list_graph, nutrients_choice, ["B"], language)
 
             else:
                 df = return_df(country, pnns1, pnns2).copy()
 
-                title = html.Strong("BEST RECOMMENDED PRODUCTS BY CATEGORY")
+                title = html.Strong(translations[language]['best_recommended_products'])
 
                 subtitles, images, styles_images, textes_images = generate_texte_image(df, diets, n_best, 
                                                                                        subtitles, images, 
-                                                                                       styles_images, textes_images)
+                                                                                       styles_images, textes_images,
+                                                                                       language)
                 # Checking each images
                 images = testing_img(images)
                 # Replace images
@@ -1004,15 +989,15 @@ def display_images(*args):
                 
                 # Creating a figure of the data distribution 
                 figure = patch_graphic(patched_figure, df, df_product, 
-                                               ch_list_graph, nutrients_choice, ["A", "B"])
+                                               ch_list_graph, nutrients_choice, ["A", "B"], language)
             prevent_update = pnns2
             pnns1_chosen, pnns2_chosen = pnns1, pnns2
             graphic_gestion_style = {'display':'block'}
             
         except:
             selected_product_img = dash.get_asset_url("no_image.jpg")
-            selected_product_title = html.Strong("Product not found, search for another one")
-            selected_product_texte = html.Strong("The product is not available")
+            selected_product_title = html.Strong(translations[language]['product_not_found'])
+            selected_product_texte = html.Strong(translations[language]['product_not_available'])
 
             title = dash.no_update
             subtitles = [dash.no_update] * len(diets)
@@ -1088,12 +1073,13 @@ def changing_image_selected_product(*args):
     State("dropdown_diet", "value"), 
     State('search_on', 'data'),
     State('dropdown_number_product', 'value'),
+    State('language_user', 'data'),
     
     prevent_initial_call=True,
 )
 # When modifying the graphic
 def modifying_graph(nutrients_choice, ch_list_graph, pnns1_chosen, pnns2_chosen, country, 
-                    selected_diet, df_slice, dropdown_diet, search_on, n_best):
+                    selected_diet, df_slice, dropdown_diet, search_on, n_best, language):
     elapsed_time = time.time() if DEBUG else None
     if search_on:
         df = pd.read_json(StringIO(df_slice), orient='split')         
@@ -1107,10 +1093,10 @@ def modifying_graph(nutrients_choice, ch_list_graph, pnns1_chosen, pnns2_chosen,
         nutrients_choice = nutrients_choice if nutrients_choice not in [None, []] else nutrients
         # We use the patch
         patched_figure = Patch()
-        figure = patch_graphic(patched_figure, df, df_N_best, ch_list_graph, nutrients_choice, ["A", "B"])
+        figure = patch_graphic(patched_figure, df, df_N_best, ch_list_graph, nutrients_choice, ["A", "B"], language)
     
     else : 
-        figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_N_best)
+        figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_N_best, language)
     
     print("modifying_graph: ", time.time() - elapsed_time) if DEBUG else None 
     
@@ -1253,6 +1239,8 @@ def browsing_history(clicks, selected_rows, history_nav, country, type_search_pr
     Input('search_pnns2_img','n_clicks'),
     Input('upload_img_data', 'contents'),
     Input('model_figure_result','clickData'),
+
+    State('language_user', 'data'),
     
     prevent_initial_call=True,
 )
@@ -1266,8 +1254,9 @@ def picture_search_div(*args):
     style_div = {'float': 'center', 'display': 'block', 'flex-direction': 'row', 'width': '100%'}
     style_others_div = [display_no_show]*3
                      
-    image_contents = args[-2]
-    clicked_graphic = args[-1]
+    image_contents = args[-3]
+    clicked_graphic = args[-2]
+    language = args[-1]
     
     uploaded_img_div = dash.no_update
     style_search_pnns1 = dash.no_update
@@ -1315,7 +1304,7 @@ def picture_search_div(*args):
 
             # We show the result with a graphic
             # For now, only 3 results, could be expanded with a button
-            figure = figure_result_model(df_result.iloc[:3])
+            figure = figure_result_model(df_result.iloc[:3], language)
         
         except:
             html.A("Format not compatible")

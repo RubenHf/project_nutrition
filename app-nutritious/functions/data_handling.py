@@ -6,6 +6,10 @@ from dash import html
 import requests
 import concurrent.futures
 import queue
+from functions.language import get_translate
+
+# We retrieve the language dictionnary
+translations = get_translate()
 
 # Return the pd.DataFrame
 def get_data():
@@ -21,13 +25,16 @@ def get_unique_countries():
     return unique_countries
 
 # Return a list of dicts with the number of products by country
-def products_by_countries():
+def products_by_countries(language):
 
-    flags = {"United States":"🇺🇸", "France":"🇫🇷", "Germany":"🇩🇪", "United Kingdom":"🇬🇧"}
+    flags = {"United States":"\U0001F1FA\U0001F1F8", 
+             "France":"\U0001F1EB\U0001F1F7", 
+             "Germany":"\U0001F1E9\U0001F1EA", 
+             "United Kingdom":"\U0001F1EC\U0001F1E7"}
     
     nb_products_countries = [
         {
-            'label': f"{flags[country]} {country} [{return_df(country).shape[0]} products]",
+            'label': f"{flags[country]} {translations[language][country]} [{return_df(country).shape[0]} products]",
             'value': country
         } 
         for country in get_unique_countries()
@@ -60,7 +67,7 @@ def get_pnns_groups():
     return pnns_groups
 
 
-def pnns_groups_options(country, pnns_groups_num, pnns1=None):
+def pnns_groups_options(country, pnns_groups_num, language, pnns1=None):
     if pnns_groups_num == "pnns_groups_1":
         pnns_groups = data[pnns_groups_num].unique()
     elif pnns_groups_num == "pnns_groups_2":
@@ -78,7 +85,7 @@ def pnns_groups_options(country, pnns_groups_num, pnns1=None):
     # Create the pnns_groups_options list
     pnns_groups_options = [
         {
-            'label': f"{pnns} [{count} products]",
+            'label': f"{translations[language][pnns]} [{count} products]",
             'value': pnns
         }
         for pnns, count in zip(merged_df[pnns_groups_num], merged_df['count'])
@@ -311,9 +318,9 @@ def df_sorting(diet, df = None):
 
     
 # Function filling the list subtitles, images, styles_images, textes_images
-def generate_texte_image(df, diets, n_best, subtitles, images, styles_images, textes_images):                 
+def generate_texte_image(df, diets, n_best, subtitles, images, styles_images, textes_images, language):                 
     for i, diet in enumerate(diets):
-        subtitles[i] = html.Strong(f"{diet}")
+        subtitles[i] = html.Strong(f"{translations[language][diet]}")
         
         # We sort, we take the n_best then we map the nutriscore label
         df_N_best = df_sorting(diet, df).head(n_best)
@@ -353,16 +360,17 @@ def get_nutriscore_image(img, style={'width': '100px', 'height': '50px', 'margin
     
     
 # Return Image of nutriscore then the text below with nutrition informations
-def get_texte_product(row):
+def get_texte_product(row, language):
     return html.Div([
         get_nutriscore_image(str(row.iloc[-1]))
         ] + [
         html.Div([
-            html.Strong(f"{row.index[i]}:"),
-            f" {row.iloc[i]}"],
+            # Get the dictionnary, then get the translated word. If not in, get the initial value
+            html.Strong(f"{translations.get(language, {}).get(row.index[i], row.index[i])}:"),
+            f" {translations.get(language, {}).get(row.iloc[i], row.iloc[i])}"],
             style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px'}
             )
-        for i, col in enumerate(row.iloc[:-1])
+        for i in range(len(row.iloc[:-1]))
     ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
     
 def find_key_by_value(my_dict, value):

@@ -58,13 +58,20 @@ def generate_table(df, page_size, id_table):
         id = id_table),
 
 # Function to generate a radio item
-def generate_radio_items(options, default, id_radio, inline = True):
-    return dcc.RadioItems(
-        value=default,
-        options=[
+def generate_radio_items(options, default, id_radio, inline = True, translations=None):
+    if translations:
+        options_labels = [
+            {'label': translations.get(label, label), 'value': label} 
+            for label in options
+        ]
+    else: 
+        options_labels = [
             {'label': label, 'value': label} 
             for label in options
-        ],
+        ]
+    return dcc.RadioItems(
+        value=default,
+        options=options_labels,
         inline=inline,
         id=id_radio,
         style={'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'width': '100%'}

@@ -3,8 +3,12 @@ import numpy as np
 import plotly.express as px
 from plotly.subplots import make_subplots
 from io import StringIO
+from functions.language import get_translate
 
-def empty_figure():
+# We retrieve the language dictionnary
+translations = get_translate()
+
+def empty_figure(language):
     """
     Function returning an empty figure with all the same template
     """
@@ -27,11 +31,11 @@ def empty_figure():
         linecolor='black',
         gridcolor='lightgrey'
     )
-    fig.add_annotation(text="No data to show", x=0.5, y=0.5, showarrow=False,
+    fig.add_annotation(text=f"{translations[language]['No data to show']}", x=0.5, y=0.5, showarrow=False,
                         font=dict(color="Black", size=20))
     return fig
 
-def blank_figure():
+def blank_figure(language):
     """
         Just creating the template
     """
@@ -75,7 +79,7 @@ def blank_figure():
 
         # Set y-axes titles and background
     figure.update_yaxes(
-        title_text="g/100g (energy)", 
+        title_text=f"g/100g ({translations[language]['energy']})", 
         secondary_y=False,
         mirror=True,
         ticks='outside',
@@ -84,12 +88,12 @@ def blank_figure():
         gridcolor='lightgrey')
 
     figure.update_yaxes(
-        title_text="g/100g (nutrients)", 
+        title_text=f"g/100g ({translations[language]['nutrients']})", 
         secondary_y=True) 
 
     # Set x-axe ticks
     figure.update_xaxes(
-        ticktext=["energy_100g"] + nutrients, 
+        ticktext=[translations[language][feat] for feat in ["energy_100g"] + nutrients],
         tickvals=[i for i in range(len(nutrients) + 1)],
         mirror=True,
         ticks='outside',
@@ -215,7 +219,8 @@ def figure_radar_plot(df_slice, nutrients, nutrients_choice, df_selected_product
         
         
         
-def create_figure_products(df, list_nutrients, selected_nutrients, selected_graphical_type, df_selected_products):
+def create_figure_products(df, list_nutrients, selected_nutrients, 
+                           selected_graphical_type, df_selected_products, language):
     """
         V2 of the function creating the different graphics used in the dashboard
         Transitioning from a boxplot to a violinplot
@@ -295,7 +300,7 @@ def create_figure_products(df, list_nutrients, selected_nutrients, selected_grap
         # Update of figure layout
         figure.update_layout(
             yaxis_title="g/100g",
-            title=dict(text=f'Distribution of macronutrients of selected products [{df.shape[0]}]',
+            title=dict(text=f"{translations[language]['Distribution_selected_products']} [{df.shape[0]}]",
                        font=dict(size=24, color="black"), x=0.5, xanchor='center'),
             font=dict(size=18, color="black"),
             plot_bgcolor='white',
@@ -303,7 +308,7 @@ def create_figure_products(df, list_nutrients, selected_nutrients, selected_grap
 
         # Set y-axes titles and background
         figure.update_yaxes(
-            title_text="g/100g (energy)", 
+            title_text=f"g/100g ({translations[language]['energy']})", 
             secondary_y=False,
             mirror=True,
             ticks='outside',
@@ -312,12 +317,12 @@ def create_figure_products(df, list_nutrients, selected_nutrients, selected_grap
             gridcolor='lightgrey')
                              
         figure.update_yaxes(
-            title_text="g/100g (nutrients)", 
+            title_text=f"g/100g ({translations[language]['nutrients']})", 
             secondary_y=True) 
                              
         # Set x-axe ticks
         figure.update_xaxes(
-            ticktext=["energy_100g"] + list_nutrients, 
+            ticktext=[translations[language][feat] for feat in ["energy_100g"] + list_nutrients],
             tickvals=[i for i in range(len(list_nutrients) + 1)],
             mirror=True,
             ticks='outside',
@@ -332,9 +337,9 @@ def create_figure_products(df, list_nutrients, selected_nutrients, selected_grap
     
     # Default, but shouldn't occur
     else:
-        return empty_figure()
+        return empty_figure(language)
 
-def patch_graphic(patched_figure, df_whole, df_product, ch_list_graph, nutrients_list, type_modification):
+def patch_graphic(patched_figure, df_whole, df_product, ch_list_graph, nutrients_list, type_modification, language):
     """
         Function that modify the patch figure
         Take as arguments, the dataframes to use
@@ -350,7 +355,7 @@ def patch_graphic(patched_figure, df_whole, df_product, ch_list_graph, nutrients
     for row in type_modification:
         if row == "A":
             df = df_whole.copy()
-            patched_figure['layout']['title']['text'] = f'Distribution of macronutrients of {df.shape[0]} products'
+            patched_figure['layout']['title']['text'] = f"{translations[language]['Distribution_of']} {df.shape[0]} {translations[language]['products']}"
             A, B = 0, 1
 
         elif row == "B":
@@ -370,7 +375,7 @@ def patch_graphic(patched_figure, df_whole, df_product, ch_list_graph, nutrients
     return patched_figure
 
 
-def figure_result_model(df):
+def figure_result_model(df, language):
     """
         Function showing the probabilities (result) of the classification model (pnns1 or pnns2)
     """
@@ -384,8 +389,8 @@ def figure_result_model(df):
 
     # Update figure layout
     figure.update_layout(
-                yaxis_title=None, xaxis_title="Probabilities to be correct (%)",
-                title=dict(text=f'Results of prediction model from the image:',
+                yaxis_title=None, xaxis_title=f"{translations[language]['Probabilities to be correct']} (%)",
+                title=dict(text=f"{translations[language]['Probabilities to be correct']}:",
                            font=dict(size=24, color="black"), x=0.5, xanchor='center'),
                 font=dict(size=18, color="black"),
                 plot_bgcolor='lightgray',
