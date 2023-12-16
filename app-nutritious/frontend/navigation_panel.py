@@ -9,7 +9,7 @@ from frontend.style import return_style10, return_style15, return_style16
 default_country = "France"
 default_search_option = "product_name"
 
-def generating_front_leftside(option_languages, translations_init, initial_language, unique_countries, pnns_groups_1, pnns_groups_2, pnns_groups, products_availability, versionning):
+def generating_navigating_panel(option_languages, translations_init, initial_language, unique_countries, pnns_groups_1, pnns_groups_2, pnns_groups, products_availability, versionning):
     return html.Div(id='left_panel', children=[    
             html.Div(id='left_panel_div1', children=[  
                 # For closing or opening the left panel
@@ -44,7 +44,8 @@ def generating_front_leftside(option_languages, translations_init, initial_langu
                 html.Div([
                     generate_dropdown(None, [], translations_init['search_product'], False, 'search_bar')
                 ], style={'margin': '0 auto', 'direction': 'ltr'}),
-                                # RadioItems of graphic option
+                
+                # RadioItems of graphic option
                 html.Div([
                     generate_radio_items(['product_name', 'product_code'], 
                                          default_search_option, 'type_search_product', translations = translations_init)
@@ -52,7 +53,9 @@ def generating_front_leftside(option_languages, translations_init, initial_langu
 
                 # pnns_groups_search with an image // Button
                 html.Div([
-                    generate_button(translations_init['picture_search_beta'], "picture_search_button", return_style15())
+                    html.A( 
+                        generate_button(translations_init['picture_search_beta'], "picture_search_button", return_style15()),
+                        href='#search_by_image')
                 ], style={'margin': '0 auto'}),
             
                 # Advanced searchbar products // Button

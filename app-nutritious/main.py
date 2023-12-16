@@ -14,8 +14,8 @@ from functions.data_handling import pnns_groups_options, return_df, get_image, g
 from functions.data_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
 from functions.data_handling import generate_texte_image, get_texte_product, testing_img
 from functions.language import get_translate, get_languages_options
-from frontend.left_side import generating_front_leftside
-from frontend.right_side import generating_front_rightside
+from frontend.navigation_panel import generating_navigating_panel
+from frontend.navigation_result import generating_navigation_result
 from frontend.style import return_style16_nd
 
 # Linked to the external CSS file 
@@ -67,10 +67,10 @@ TOTAL_IMAGES = len(diets) * 20
 # Front-end of the app
 app.layout = html.Div([
     # Function generating the left Frontside of the app
-    generating_front_leftside(option_languages, translations[initial_language], initial_language, unique_countries, pnns_groups_1, pnns_groups_2, pnns_groups, products_availability, versionning),
+    generating_navigating_panel(option_languages, translations[initial_language], initial_language, unique_countries, pnns_groups_1, pnns_groups_2, pnns_groups, products_availability, versionning),
 
     # Function generating the right Frontside of the app
-    generating_front_rightside(translations[initial_language], initial_language, pnns_groups_1, pnns_groups_2, pnns_groups, diets, nutrients),
+    generating_navigation_result(translations[initial_language], initial_language, pnns_groups_1, pnns_groups_2, pnns_groups, diets, nutrients),
     
     dcc.Store(id='sliced_file', data=None),
     dcc.Store(id='personnalized_sorting', data=None),
