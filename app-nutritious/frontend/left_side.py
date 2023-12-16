@@ -1,5 +1,4 @@
-﻿import dash
-from dash import html, dcc
+﻿from dash import html, dcc, get_asset_url
 
 # Importing the functions
 from functions.dash_components import generate_slider, generate_dropdown, generate_radio_items, generate_input, generate_button
@@ -54,7 +53,7 @@ def generating_front_side(option_languages, translations, unique_countries, pnns
     
             html.Div(id='left_panel_div2', children=[     
                 html.Div(
-                    html.Img(src=dash.get_asset_url('pomme.jpeg'), 
+                    html.Img(src=get_asset_url('pomme.jpeg'), 
                          style={'width': '300px', 'height': '300px'}),
                     style={'textAlign': 'center'}),
 

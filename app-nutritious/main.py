@@ -33,10 +33,10 @@ DEBUG = True
 # Set default language
 initial_language = 'en'
 
-option_languages = get_languages_options()
-
 # Retrieve language dictionnary
 translations = get_translate()
+
+option_languages = get_languages_options(translations[initial_language])
 
 products_availability = str(get_data().shape[0])
 
@@ -83,7 +83,7 @@ style10 = {'font-size': '10px', 'color': 'black', 'width': '100%', 'display':'no
         'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
 
 app.layout = html.Div([
-    # Left side
+    # Function generating the left Frontside of the app
     generating_front_side(option_languages, translations, unique_countries, pnns_groups_1, pnns_groups_2, pnns_groups, products_availability),
 
     # Contents on the right side
@@ -304,6 +304,7 @@ app.layout = html.Div([
     Output('language_user', 'data'),
     Output('dropdown_number_product', 'options'),
     Output('type_search_product', 'options'),
+    Output('dropdown_language', 'options'),
     Output('picture_search_button', 'children'),
     Output('advanced_search_button', 'children'),
     Output('browsing_button', 'children'),
@@ -320,15 +321,18 @@ app.layout = html.Div([
     )
 def definition_language_user(input_language):
 
-    # Display options 
+    # Changing language of display items options
     options_display=[
         {'label': translations[input_language][f'displaying_{n}_products'], 'value': n}
                     for n in [5, 10, 15, 20]
                 ]
+    # Changing language of options radio items
     options_type_search = [
             {'label': translations[input_language]['product_name'], 'value': 'product_name'}, 
             {'label': translations[input_language]['product_code'], 'value': 'product_code'} 
         ]
+    # Changing the language of the sentence in language options
+    options_language = get_languages_options(translations[input_language])
 
     children_picture_search = translations[input_language]['picture_search_beta']
     children_advanced_search = translations[input_language]['advanced_search']
@@ -337,7 +341,7 @@ def definition_language_user(input_language):
     children_referencing = f"{translations[input_language]['referenced_products']}: {products_availability}"
     output_subtitles = [translations[input_language][diet] for diet in diets]
 
-    return (input_language, options_display, options_type_search,
+    return (input_language, options_display, options_type_search, options_language, 
             children_picture_search, children_advanced_search,children_browsing_search, 
             place_holder_search, children_referencing, *output_subtitles)
 

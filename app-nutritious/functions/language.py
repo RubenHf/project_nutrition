@@ -1,14 +1,26 @@
-﻿def get_languages_options():
+﻿from dash import html
+
+def get_languages_options(language):
     """
         Return a list of languages available 
     """
     return [
         {
-            'label': f"{label} - {language.upper()}",
-            'value': language
-        } 
-        for label, language in zip (['Dansk', 'Deutsch', 'English', 'Français'], ['da','de','en','fr']) 
+            'label':  html.Div([
+                language["Select a language"],
+                html.Hr(style={'border-color': 'gray', 'margin': '0px'})
+            ]),
+            'value': 'none', 
+            'disabled': True
+        },
+        *[
+            {
+                'label': f"{label} - {language.upper()}",
+                'value': language
+            } 
+            for label, language in zip(['Dansk', 'Deutsch', 'English', 'Français'], ['da','de','en','fr'])
         ]
+    ]
 
 def get_translate():
     """
@@ -130,6 +142,7 @@ def get_translate():
         'Distribution_of': 'Distribution of macronutrients of',
         'Probabilities to be correct': 'Probabilities to be correct',
         'Results of prediction model from the image': 'Results of prediction model from the image',
+        'Select a language': 'Select a language',
         
     },
 
@@ -248,6 +261,7 @@ def get_translate():
         'Distribution_of': 'Répartition des macronutriments de',
         'Probabilities to be correct': 'Probabilités d\'être correct',
         'Results of prediction model from the image': 'Résultats du modèle de prédiction à partir de l\'image',
+        'Select a language': 'Sélectionnez une langue',
         
         
     },
@@ -366,6 +380,7 @@ def get_translate():
         'Distribution_of': 'Verteilung der Makronährstoffe von',
         'Probabilities to be correct': 'Wahrscheinlichkeiten, richtig zu sein',
         'Results of prediction model from the image': 'Ergebnisse des Vorhersagemodells aus dem Bild',
+        'Select a language': 'Wählen Sie eine Sprache aus',
         
         
     },
@@ -484,6 +499,7 @@ def get_translate():
         'Distribution_of': 'Fordeling af makronæringsstoffer i',
         'Probabilities to be correct': 'Sandsynligheder for at være korrekt',
         'Results of prediction model from the image': 'Resultater af forudsigelsesmodellen fra billedet',
+        'Select a language': 'Vælg et sprog',
         
        
     }
