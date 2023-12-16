@@ -8,13 +8,15 @@ import time
 from collections import Counter 
 
 # Importing the functions
-from functions.dash_figures import create_figure_products, blank_figure, patch_graphic, figure_result_model
+from functions.dash_figures import create_figure_products, patch_graphic, figure_result_model
 from functions.dash_components import generate_slider, generate_dropdown, generate_table, generate_radio_items, generate_input, generate_button
 from functions.data_handling import pnns_groups_options, return_df, get_image, get_code, df_sorting, get_nutriscore_image
 from functions.data_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
 from functions.data_handling import generate_texte_image, get_texte_product, testing_img
 from functions.language import get_translate, get_languages_options
-from frontend.left_side import generating_front_side
+from frontend.left_side import generating_front_leftside
+from frontend.right_side import generating_front_rightside
+from frontend.style import return_style16_nd
 
 # Linked to the external CSS file 
 
@@ -47,8 +49,7 @@ slider_trigger = ["slider_energy", "slider_fat", "slider_saturated", "slider_car
 diets = ["Healthier foods", "Fiber rich foods", "Low sugar foods", "Protein rich foods", "Low fat foods", "Low salt foods", "Low saturated fat foods", "Energy rich foods"]
 
 # Default setup
-default_country, default_pnns1, default_diet = "France", "Fruits and vegetables", "Healthier foods" 
-default_graphic_option, default_search_option = "Distribution", "product_name"
+default_diet = "Healthier foods" 
 
 # Generate list of unique countries and number of products
 unique_countries = products_by_countries(initial_language)
@@ -63,224 +64,13 @@ pnns_groups = get_pnns_groups()
 # to handle increased number of diet
 TOTAL_IMAGES = len(diets) * 20
 
-# To have a clearer code
-
-style24 = {'font-size': '24px', 'color': 'black', 'width': '100%', 
-            'textAlign': 'center', 'margin': '0px', 'border': 'none', 'background-color': 'gray',
-            'display': 'flex', 'flex-direction': 'column'}
-
-style16 = {'font-size': '16px', 'color': 'black', 'width': '100%', 
-        'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
-
-style16_nd = {'font-size': '16px', 'color': 'black', 'width': '100%', 
-        'textAlign': 'center', 'margin': '0px', 'border': '1px solid black', 'background-color': 'lightgray'}
-
-style15 = {'align-items': 'center', 'justify-content': 'center', 'border': '1px solid black',
-        'font-size': '15px', 'color': 'black', 'width': '100%', 
-        'textAlign': 'center', 'margin': '0px', 'background-color': 'white'}
-
-style10 = {'font-size': '10px', 'color': 'black', 'width': '100%', 'display':'none', 
-        'textAlign': 'left', 'margin': '0px', 'border': 'none', 'background-color': 'gray'}
-
+# Front-end of the app
 app.layout = html.Div([
     # Function generating the left Frontside of the app
-    generating_front_side(option_languages, translations, unique_countries, pnns_groups_1, pnns_groups_2, pnns_groups, products_availability),
+    generating_front_leftside(option_languages, translations[initial_language], initial_language, unique_countries, pnns_groups_1, pnns_groups_2, pnns_groups, products_availability, versionning),
 
-    # Contents on the right side
-    html.Div([
-
-            html.Div([
-                html.Div([html.Strong(translations[initial_language]['advanced_search_label'])], 
-                                     style=style24),
-                
-                # Dropdown for the pnns_groups_1
-                html.Div([
-                    generate_dropdown(None, pnns_groups_1, translations[initial_language]['choose_pnns_group_1'], False, 'dropdown_pnns1')
-                ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
-
-                # Dropdown for the pnns_groups_2
-                html.Div([
-                    generate_dropdown(None, [], translations[initial_language]['choose_pnns_group_2'], False, 'dropdown_pnns2')
-                ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
-                
-                # Input to search product
-                html.Div([
-                    generate_input(translations[initial_language]['search_product_optional'], "input_search_adv")
-                ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
-
-                # Dropdown for the diet
-                html.Div([
-                    generate_dropdown(None, diets, translations[initial_language]['choose_nutritious_plan'], False, 'dropdown_diet')
-                ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
-
-                # Sliders controling which products we show
-                html.Div([
-                    generate_slider(translations[initial_language]['energy_kcal_100g'], 'slider_energy', 3880),
-                    generate_slider(translations[initial_language]['fat_g_100g'], 'slider_fat', 100),
-                    generate_slider(translations[initial_language]['saturated_fat_g_100g'], 'slider_saturated', 100),
-                    generate_slider(translations[initial_language]['carbohydrates_g_100g'], 'slider_carbohydrates', 100),
-                    generate_slider(translations[initial_language]['fiber_g_100g'], 'slider_fiber', 100),
-                    generate_slider(translations[initial_language]['proteins_g_100g'], 'slider_proteins', 100),
-                    generate_slider(translations[initial_language]['salt_g_100g'], 'slider_salt', 100),
-                    generate_slider(translations[initial_language]['macronutrients_g_100g'], 'slider_macronutrients', 100)
-
-                    ], style={'float': 'center', 'width': '500px', 'margin':'0 auto', 'flex-direction': 'row', 'margin-bottom': '20px'}),
-
-                    # Button to reset options from the advanced search
-                html.Div([
-                    generate_button(html.Strong("Reset"), "reset_sliders_button", {}),
-                ], style={'float': 'center', 'margin':'0 auto', 'textAlign': 'center', 'color': 'black', 'fontSize': 15, 'margin-bottom': '20px'}),
-
-                # Button to confirm the search 
-                html.Div([
-                    generate_button(translations[initial_language]['search'], "search_confirmation_button", {'width': '200px'})
-                ], style={'float': 'center', 'font-size': '12px', 'color': 'black', 'width': '200px', 'margin':'0 auto', 
-                           'textAlign': 'center', 'border': '1px solid black', 'background-color': 'lightgray'}),
-
-                # Horizontale line
-                html.Hr(style={'border-top': '4px solid black'}),  
-                
-            ], id = 'advanced_search_div', style={'float': 'center', 'display': 'None', 'flex-direction': 'row', 
-                                              'width': '100%', 'background-color': '#F0F0F0', 'margin-bottom': '20px'}),
-
-        
-        html.Div([
-            # Set an invisible anchor
-            html.A(id="top_dash"),
-            # To display a selected product at the top
-
-            html.Div(id='selected_product_style', style={'display':'None'}, children=[
-                dcc.Loading(id="loading_section_img", type="default", children = [
-                    html.Div(id='selected_product_title',  
-                        style=style24),
-
-                    # Searchbar for products with the same product name
-                    html.Div([
-                        generate_dropdown(None, [], translations[initial_language]['search_product'], False, 'multiple_product_dropdown')
-                    ], style={'margin': '0 auto', 'border': '1px solid black'}),
-                    
-                    html.Div([
-                        html.Img(id='selected_product_img', src=dash.get_asset_url('no_image.jpg'), 
-                            alt=translations[initial_language]['no_image_available'], style = {'height':'450px', 'width':'450px'}),
-                        html.Div(id='selected_product_texte')
-                    ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
-
-                    # To display up to 3 + 1 alternatives images
-                    html.Div([
-                        html.A( 
-                            html.Img(id=f"selected_img_{i}", src=dash.get_asset_url('no_image.jpg'), n_clicks = 0, 
-                                 alt=translations[initial_language]['no_image_available'], style={'height': '150px', 'width': '150px'}),
-                            href='#top_dash')
-                        for i in range(4)
-                    ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
-                ]),
-            ]),
-
-            # To display the list of products
-
-            html.Div(id='images_title', 
-                             style=style24),
-
-            html.Div([
-                html.Div([
-                    html.Button(children=f"{diet}", id=f"{diet}_div", n_clicks=0,
-                                style={'font-size': '16px', 'color': 'black', 'textAlign': 'left', 'margin': '0px',
-                                       'border': '1px', 'background-color': 'lightgray', 'width': '100%', 'margin': 'auto'}),
-                    html.Div([
-                        html.Div([
-                            dcc.Loading(id=f"loading_section_{diet}_img_{i}", type="default", children = [
-                            # html.A for having the clickable action on and going back to top
-                            html.A( 
-                                html.Img(id=f"{diet}_img_{i}", src=dash.get_asset_url('no_image.jpg'), n_clicks = 0, 
-                                     alt=translations[initial_language]['no_image_available'], style={'height': '200px', 'width': '200px'}),
-                            href='#top_dash'),
-                            html.Div(id=f"{diet}_div_{i}")
-                                ]),
-                        ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
-                        for i in range(20)
-                    ], style={'display': 'flex', 'flex-direction': 'row', 'overflowX': 'scroll'})
-                    # Horizontal line
-                ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
-                for diet in diets
-            ]),
-
-            html.Div(id='graphic_gestion', style={'display': 'None'}, children=[
-                # Horizontale line
-                html.Hr(style={'border-top': '4px solid black'}),  
-                # RadioItems of graphic option
-                html.Div([
-                    generate_radio_items(['Distribution', 'Products'],  #'Radarplot', 
-                                         default_graphic_option, 'check_list_graph_img', translations = translations[initial_language])
-                ], style={'margin': 'auto'}),
-
-                # Dropdown for the macronutrient choice
-                html.Div([
-                    generate_dropdown(None, nutrients, translations[initial_language]['choose_nutrients'], True, 'dropdown_nutrients_img')
-                ], style={'margin': '0 auto'}),
-
-                # Figure of macronutriments
-                html.Div([
-                    dcc.Graph(figure = blank_figure(initial_language), id="graph_products_img", style={'height': '600px', 'width': '100%', 'float': 'center'}),
-                ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
-            ]),
-
-
-        ], style={'display': 'block', 'flex-direction': 'row', 'width': '100%'},  id='images_gestion'),
-
-        # To display the browser history
-        html.Div([
-            html.Div(
-                generate_table(None, 20, 'browser_table'),  
-            )
-        ], style={'display': 'None'},  id='browser_history_div'),
-        
-        # To display the search by picture
-        
-        html.Div([
-            # Maximum MB = 15
-            dcc.Upload([
-                    generate_button(html.Strong(translations[initial_language]['upload_image']), "upload_img_button", style16_nd),
-                ], max_size = 15 * 1024 * 1024, # Maximum file size to 15MB
-                   accept=".jpeg, .png, .jpg",  # Accepted file types
-                   style={'margin': '0 auto', 'float': 'center'}, id="upload_img_data"),
-    
-            # To show the uploaded image
-            html.Div(id='uploaded_img', style={'margin': '0 auto', 'text-align': 'center'}),
-            
-            # To have the 2 buttons on the same row
-            html.Div([
-                
-                html.Div([
-                    generate_button(html.Strong(translations[initial_language]['search_pnns_groups_1']), "search_pnns1_img", {'display': 'None'}),
-                ], style={'margin': '0 auto', 'text-align': 'left', 'width':'50%'}),
-                
-                html.Div([
-                    generate_button(html.Strong(translations[initial_language]['search_pnns_groups_2']), "search_pnns2_img", {'display': 'None'}),
-                ], style={'margin': '0 auto', 'text-align': 'right', 'width':'50%'}),
-                
-            ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
-            
-            html.Div([
-                    generate_button(html.Strong(translations[initial_language]['clear_image']), "clear_img_button", {'display': 'None'}),
-                ], style={'margin': '0 auto', 'float': 'center'}),
-            
-            # Div for the results
-            html.Div([
-                html.Div(style = {'margin-top': '10px'}),
-            
-                dcc.Graph(
-                    id='model_figure_result',
-                    config={'displayModeBar': False}
-                ),
-
-            ], style={'display':'None'}, id="result_model_image"),
-            
-            
-        ], style={'display':'None'},
-        id='picture_search_div')
-            
-    ], style={'flex-direction': 'row', 'width': '100%', 'background-color': '#F0F0F0', 
-              'overflowY': 'scroll', 'height': '100vh', 'flex': '2'}),
+    # Function generating the right Frontside of the app
+    generating_front_rightside(translations[initial_language], initial_language, pnns_groups_1, pnns_groups_2, pnns_groups, diets, nutrients),
     
     dcc.Store(id='sliced_file', data=None),
     dcc.Store(id='personnalized_sorting', data=None),
@@ -295,7 +85,6 @@ app.layout = html.Div([
     dcc.Store(id='search_bar_data', data=False),
     # To handle session memory
     dcc.Store(id='language_user', data=initial_language),
-    
     
 ],id='app-container', style={'justify-content': 'space-between', 'margin': '0', 'padding': '0'})
 
@@ -1277,14 +1066,14 @@ def picture_search_div(*args):
     
     elif ctx.triggered_id == "upload_img_data":
         style_upload_button = display_no_show
-        style_clear_button = style16_nd
-        style_search_pnns1 = style16_nd
-        style_search_pnns2 = style16_nd
+        style_clear_button = return_style16_nd()
+        style_search_pnns1 = return_style16_nd()
+        style_search_pnns2 = return_style16_nd()
         
         uploaded_img_div = html.Img(src=image_contents, style={'width': '500px', 'height':'500px'})
         
     elif ctx.triggered_id in ["clear_img_button", "picture_search_button"]:
-        style_upload_button = style16_nd
+        style_upload_button = return_style16_nd()
         style_clear_button = display_no_show
         style_search_pnns1 = display_no_show
         style_search_pnns2 = display_no_show
