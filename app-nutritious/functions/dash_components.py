@@ -33,11 +33,13 @@ def generate_input(placeholder, id_dcc, type_dcc = "text"):
 
 # Function to generate a button
 def generate_button(title_button, id_button, style_button):
+    new_style = style_button.copy()
+    new_style.update({'whiteSpace': 'normal'})
     return html.Button(
         title_button, 
         id=id_button, 
         n_clicks=0, 
-        style=style_button)
+        style=new_style)
 
 # Function to generate a Dash table
 def generate_table(df, page_size, id_table):

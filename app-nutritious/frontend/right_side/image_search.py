@@ -13,7 +13,7 @@ def generating_image_search_page(translations_init):
                    style={'margin': '0 auto', 'float': 'center'}, id="upload_img_data"),
     
             # To show the uploaded image
-            html.Div(id='uploaded_img', style={'margin': '0 auto', 'text-align': 'center'}),
+            html.Div(id='uploaded_img', style={'margin': '0 auto', 'text-align': 'center', 'width':'100%'}),
             
             # To have the 2 buttons on the same row
             html.Div([

@@ -108,6 +108,6 @@ def generating_navigating_panel(option_languages, translations_init, initial_lan
 
                     html.Div(id='referencing', className='row', children=f"{translations_init['referenced_products']}: {products_availability}"),
                 ], style={'textAlign': 'left', 'color': 'black', 'fontSize': 12}),
-            ]),
+            ], style={'direction': 'ltr'}),
             ], style={'background-color': '#F0F0F0', 'overflowY': 'scroll', 'height': '100vh', 'flex': '1', 'direction': 'rtl',
                      'border-right': '1px solid black', 'margin':'0px'})

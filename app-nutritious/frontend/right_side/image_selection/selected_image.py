@@ -19,7 +19,7 @@ def generating_image_selected_page(translations_init):
                 html.Img(id='selected_product_img', src=get_asset_url('no_image.jpg'), 
                     alt=translations_init['no_image_available'], style = {'height':'450px', 'width':'450px'}),
                 html.Div(id='selected_product_texte')
-            ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
+            ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%', 'overflowX': 'scroll'}),
 
             # To display up to 3 + 1 alternatives images
             html.Div([
@@ -28,6 +28,6 @@ def generating_image_selected_page(translations_init):
                             alt=translations_init['no_image_available'], style={'height': '150px', 'width': '150px'}),
                     href='#top_dash')
                 for i in range(4)
-            ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
-        ]),
+            ], style={'display': 'flex', 'flex-direction': 'row', 'overflowX': 'scroll'}),
+        ], style={'display': 'flex', 'flex-direction': 'row', 'width': '100%'}),
     ])

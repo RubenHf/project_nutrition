@@ -396,8 +396,8 @@ def figure_result_model(df, language):
                 plot_bgcolor='lightgray',
                 paper_bgcolor='#F0F0F0',
             )
-    figure.update_yaxes(showline=True, linecolor='black')
-    figure.update_xaxes(showline=True, linecolor='black', range = [0, 100])
+    figure.update_yaxes(showline=True, linecolor='black', fixedrange=True)
+    figure.update_xaxes(showline=True, linecolor='black', range = [0, None], fixedrange=True)
 
     # Update the hovertemplate information
     figure.update_traces(hovertemplate='<br>Pnns_groups: %{y}<br>Probability: %{x}%')

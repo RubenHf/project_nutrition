@@ -368,10 +368,10 @@ def get_texte_product(row, language):
             # Get the dictionnary, then get the translated word. If not in, get the initial value
             html.Strong(f"{translations.get(language, {}).get(row.index[i], row.index[i])}:"),
             f" {translations.get(language, {}).get(row.iloc[i], row.iloc[i])}"],
-            style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px'}
+            style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px', 'white-space': 'nowrap'}
             )
         for i in range(len(row.iloc[:-1]))
-    ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
+    ], style={'display': 'flex', 'flex-direction': 'column', 'overflowX': 'scroll'})
     
 def find_key_by_value(my_dict, value):
     """
