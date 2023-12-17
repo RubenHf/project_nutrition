@@ -1,10 +1,4 @@
-﻿
-import linecache
-import os
-import tracemalloc
-#tracemalloc.start()
-
-import dash
+﻿import dash
 from dash import Dash, html, dcc, Output, Input, State, ctx, Patch
 from dash.exceptions import PreventUpdate
 import pandas as pd
@@ -1126,12 +1120,10 @@ def picture_search_div(*args):
         # We send the image to the model
         if ctx.triggered_id == "search_pnns1_img":
             image_contents = {"base64_image": image_contents, "pnns_groups": "pnns_groups_1"}
-            response = requests.post("http://0.0.0.0:8000/process-image/", data=image_contents)
-            #response = requests.post("https://fast-api-pnns1-cd370c7762e4.herokuapp.com/process-image/", data=image_contents)
         elif ctx.triggered_id == "search_pnns2_img":
             image_contents = {"base64_image": image_contents, "pnns_groups": "pnns_groups_2"}
-            response = requests.post("http://0.0.0.0:8000/process-image/", data=image_contents)
-            #response = requests.post("https://fast-api-pnns2-d692c6a24a80.herokuapp.com/process-image/", data=image_contents)
+        
+        response = requests.post("https://fast-api-pnns1-cd370c7762e4.herokuapp.com/process-image/", data=image_contents)
         
         try:
             # We put the result into a dataframe

@@ -1,8 +1,9 @@
 ﻿import pandas as pd
 import copy
 import os
-import dash
-from dash import html
+from io import StringIO
+import boto3
+from dash import html, get_asset_url
 import requests
 import concurrent.futures
 import queue
@@ -346,14 +347,14 @@ def generate_texte_image(df, diets, n_best, subtitles, images, styles_images, te
     #images = check_image_urls_parallel(images)
     images = testing_img(images)
     # Replace image 
-    images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
+    images = [get_asset_url('no_image.jpg') if url is None else url for url in images]
     
     return subtitles, images, styles_images, textes_images   
 
 # Return image of nutriscore
 def get_nutriscore_image(img, style={'width': '100px', 'height': '50px', 'margin-left':'10px'}):
     return html.Img(
-            src=dash.get_asset_url(img),
+            src=get_asset_url(img),
                 alt="Product Nutriscore",
                 style=style
             )
@@ -387,14 +388,9 @@ def find_key_by_value(my_dict, value):
     # If the value is not found
     return None 
 
+# When debugging, it will load the file in local
+# On server, it will load from S3
 try:
-    # Define the path to the file in the /files directory
-    file_path='cleaned_data.csv'
-    # Now you can use the file_path to access your file
-    with open(file_path, 'r') as file:
-        data = pd.read_csv(file_path, sep = "\t")
-
-except:
     # Get the directory of the script
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -407,6 +403,22 @@ except:
     # Now you can use the file_path to access your file
     with open(file_path, 'r') as file:
         data = pd.read_csv(file_path, sep = "\t")
+except:
+    s3 = boto3.client('s3')
+    # S3 bucket from the project and files
+    bucket_name = 'nutritious.app'
+    data_file = 'files/cleaned_data.csv'
+
+    try:
+        # Read the CSV file from S3 into a Pandas DataFrame
+        response = s3.get_object(Bucket=bucket_name, Key=data_file)
+        content = response['Body'].read().decode('utf-8')
+        data = pd.read_csv(StringIO(content), sep='\t')
+
+    except Exception as e:
+        print(f"Error downloading file: {str(e)}")
 
 # We do the mapping of nutriscore
 data = mapping_nutriscore_IMG(data)
+
+
