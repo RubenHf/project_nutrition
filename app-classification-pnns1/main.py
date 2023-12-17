@@ -3,25 +3,12 @@ from fastapi.responses import JSONResponse
 from io import BytesIO
 import base64
 import tensorflow as tf
-import pickle
+from functions.loading_models import load_API_models
 
 app = FastAPI()
 
-
-## I load a model developped to determine if the image is appropriate (Front or back)
-
-def load_model(model_save_path):
-    model = tf.keras.models.load_model(model_save_path)
-    return model
-
-def load_preprocess():
-    with open("models/preprocess_input.pkl", "rb") as f:
-        preprocess_input = pickle.load(f)
-    return preprocess_input
-
-loaded_model_pnns1 = load_model("models/model_classification_pnns1_best_weights.h5")
-loaded_model_pnns2 = load_model("models/model_classification_pnns2_best_weights.h5")
-loaded_preprocess_input = load_preprocess()
+# We load the models and the preprocess
+loaded_model_pnns1, loaded_model_pnns2, loaded_preprocess_input = load_API_models()
 
 def preprocess_image(image, preprocess_input):
     # Apply the same preprocessing as during training
