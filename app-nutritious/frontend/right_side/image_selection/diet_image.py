@@ -31,14 +31,14 @@ def generate_images_and_textes(translations_init, diets):
                                        'border': '1px', 'background-color': 'lightgray', 'width': '100%', 'margin': 'auto'}),
                     html.Div([
                         html.Div([
-                            dcc.Loading(id=f"loading_section_{diet}_img_{i}", type="default", children = [
+                           # dcc.Loading(id=f"loading_section_{diet}_img_{i}", type="default", children = [
                             # html.A for having the clickable action on and going back to top
                             html.A( 
                                 html.Img(id=f"{diet}_img_{i}", src=get_asset_url('no_image.jpg'), n_clicks = 0, 
                                      alt=translations_init['no_image_available'], style={'height': '200px', 'width': '200px'}),
                             href='#top_dash'),
+                           #]),
                             html.Div(id=f"{diet}_div_{i}")
-                                ]),
                         ], style={'display': 'flex', 'flex-direction': 'column', 'width': '100%'})
                         for i in range(20)
                     ], style={'display': 'flex', 'flex-direction': 'row', 'overflowX': 'scroll'})

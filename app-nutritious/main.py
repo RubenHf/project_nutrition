@@ -1,5 +1,6 @@
 ﻿import dash
 from dash import Dash, html, dcc, Output, Input, State, ctx, Patch
+from dash.exceptions import PreventUpdate
 import pandas as pd
 import requests
 import math
@@ -110,6 +111,8 @@ app.layout = html.Div([
     )
 def definition_language_user(input_language):
 
+    elapsed_time = time.time() if DEBUG else None
+
     # Changing language of display items options
     options_display=[
         {'label': translations[input_language][f'displaying_{n}_products'], 'value': n}
@@ -129,6 +132,8 @@ def definition_language_user(input_language):
     place_holder_search = translations[input_language]['search_product']
     children_referencing = f"{translations[input_language]['referenced_products']}: {products_availability}"
     output_subtitles = [translations[input_language][diet] for diet in diets]
+
+    print("Language_user", time.time() - elapsed_time) if DEBUG else None
 
     return (input_language, options_display, options_type_search, options_language, 
             children_picture_search, children_advanced_search,children_browsing_search, 
@@ -196,7 +201,7 @@ def search_bar_option_def(country, dropdown_search, search_bar, language, search
         df = return_df(country, None, None)
         
         # If we search by product name
-        if dropdown_search == 'Product name':
+        if dropdown_search == 'product_name':
             # Get a Series with unique product names and their counts using Counter
             unique_counts = Counter(df['product_name'])
 
@@ -214,7 +219,7 @@ def search_bar_option_def(country, dropdown_search, search_bar, language, search
             ]
 
         # If we search by product code
-        elif dropdown_search == 'Product code':
+        elif dropdown_search == 'product_code':
             # Each product has its own unique code
 
             # Create the search_bar_option list
@@ -230,6 +235,7 @@ def search_bar_option_def(country, dropdown_search, search_bar, language, search
     
     # If user has written more than 2 letters or number, we show the selection
     elif ctx.triggered_id == 'search_bar':
+        
         if len(search_bar) > 2:
             # We search for the products
             search_bar_option = [
@@ -237,7 +243,7 @@ def search_bar_option_def(country, dropdown_search, search_bar, language, search
                 if search_bar.lower() in str(option['value']).lower()
                 ]
         else:
-            search_bar_option = []
+            search_bar_option = dash.no_update 
         
         search_bar_data = dash.no_update    
 
@@ -258,12 +264,15 @@ def search_bar_option_def(country, dropdown_search, search_bar, language, search
 
 # When selected product have multiple possibilities 
 def multiple_product_dropdown(search_bar, language, dropdown_search):
+
+    elapsed_time = time.time() if DEBUG else None
+
     # initialize values
     style_multiple_dropdown = dash.no_update
     option_multiple_dropdown = dash.no_update
     value_multiple_dropdown = None
     
-    if dropdown_search == "Product name":
+    if dropdown_search == "product_name":
         
         # We search for all the products with the same name
         df_product = get_data().query('product_name == @search_bar')
@@ -287,7 +296,8 @@ def multiple_product_dropdown(search_bar, language, dropdown_search):
             }
             for _, row in df_product.iterrows()]
         
-        
+    print("multiple_product_dropdown", time.time() - elapsed_time) if DEBUG else None        
+
     return value_multiple_dropdown, option_multiple_dropdown, style_multiple_dropdown 
 
 @app.callback(
@@ -302,16 +312,17 @@ def multiple_product_dropdown(search_bar, language, dropdown_search):
     
     *[Input(f'{pnns1}', 'n_clicks') for pnns1 in pnns_groups_1],
     *[Input(f'{pnns2}', 'n_clicks') for pnns2 in pnns_groups_2],
-    Input('dropdown_country','value'),
     Input('loading_history','data'),
+    Input('dropdown_country','value'),
     Input('pnns1_chosen', 'data'),
     Input('pnns2_chosen', 'data'),
     Input('language_user', 'data'),
     
     State('history', 'data'),
-    
+
     prevent_initial_call=True,
 )
+
 def click_pnns_showing(*args):
     elapsed_time = time.time() if DEBUG else None
     
@@ -329,8 +340,7 @@ def click_pnns_showing(*args):
     style_images_gestion = {'display': 'block', 'flex-direction': 'row', 'width': '100%'}
     
     # We retrieve the last arguments
-    country, history_nav, language = args[-6], args[-1], args[-2]  
-    pnns2_chosen, pnns1_chosen = args[-3], args[-4]
+    (country, pnns1_chosen, pnns2_chosen, language, history_nav) = args[-5:]
     
     # Initialize the display to none
     output_style = [pnns2_option_invisible] * len(pnns_groups_2) 
@@ -497,7 +507,39 @@ def update_sliders(pnns1_chosen, pnns2_chosen, n_clicks, n_clicks_search, countr
         return tuple(output_values)
 
     return dash.no_update
+
+@app.callback(
+    *[Output(f'{diet}_img_{i}', 'style', allow_duplicate=True) for diet in diets for i in range(20)],
+    *[Output(f'{diet}_img_{i}', 'src', allow_duplicate=True) for diet in diets for i in range(20)],
+    *[Output(f'{diet}_div_{i}', 'children', allow_duplicate=True) for diet in diets for i in range(20)],
     
+    *[Input(f'{diet}_div', 'n_clicks') for diet in diets],
+    *[Input(f'{diet}_img_{i}', 'n_clicks') for diet in diets for i in range(20)],
+    Input('pnns1_chosen', 'data'),
+    Input('pnns2_chosen', 'data'),
+    Input('dropdown_country','value'),
+    Input('search_bar', 'value'),
+    Input('search_confirmation_button', 'n_clicks'),
+    Input('advanced_search_button', 'n_clicks'),
+
+    State('prevent_update', 'data'),
+
+    prevent_initial_call=True,
+)
+
+# We clear the images and textes before updating it. 
+def clearing_textes_images(*args):
+    elapsed_time = time.time() if DEBUG else None
+
+    if args[-1] != None:
+        raise PreventUpdate
+
+    texte_images = [None] * TOTAL_IMAGES
+    src_images = [None] * TOTAL_IMAGES
+    style_images = [{'display':'None'}] * TOTAL_IMAGES
+
+    print("clearing_textes_images", time.time() - elapsed_time) if DEBUG else None
+    return tuple([*style_images, *src_images, *texte_images])
 
 @app.callback(
     Output('images_title', 'children'),
@@ -698,7 +740,7 @@ def display_images(*args):
             if ctx.triggered_id == "search_bar":
                 # We check if it is a product name or code entered
 
-                if type_search_product == "Product name":
+                if type_search_product == "product_name":
                     product_code = get_data().query('product_name == @search_bar').get('code')
                     # If more than 1 product
                     if product_code.shape[0] > 1:
@@ -707,7 +749,7 @@ def display_images(*args):
                     else:
                         code = product_code.values[0]
 
-                elif type_search_product == "Product code":
+                elif type_search_product == "product_code":
                     code = str(search_bar)
 
             # If searched by the intra search bar (multiple products with the same name)
@@ -763,6 +805,8 @@ def display_images(*args):
                 styles_images = [dash.no_update] * TOTAL_IMAGES
                 textes_images = [dash.no_update] * TOTAL_IMAGES
 
+                prevent_update, pnns1_chosen, pnns2_chosen = ([dash.no_update]*3)
+
                 figure = patch_graphic(patched_figure, None, df_product, 
                                                ch_list_graph, nutrients_choice, ["B"], language)
 
@@ -783,8 +827,9 @@ def display_images(*args):
                 # Creating a figure of the data distribution 
                 figure = patch_graphic(patched_figure, df, df_product, 
                                                ch_list_graph, nutrients_choice, ["A", "B"], language)
-            prevent_update = pnns2
-            pnns1_chosen, pnns2_chosen = pnns1, pnns2
+                prevent_update = pnns2
+                pnns1_chosen, pnns2_chosen = pnns1, pnns2
+
             graphic_gestion_style = {'display':'block'}
             
         except:
@@ -815,8 +860,10 @@ def display_images(*args):
         else:
             shown_img_data[key] = src
             
-    pnns1_chosen = pnns1_chosen if condition_selected_a_product else dash.no_update
-    pnns2_chosen = pnns2_chosen if condition_selected_a_product else dash.no_update
+    if condition_selected_a_product == False:
+        pnns1_chosen = dash.no_update
+        pnns2_chosen = dash.no_update
+
             
     output_values = [title, *subtitles, *images, *styles_images, *textes_images, *others_img, *others_img_style,
                      figure, graphic_gestion_style, selected_diet, selected_product_style, 
@@ -980,10 +1027,10 @@ def browsing_history(clicks, selected_rows, history_nav, country, type_search_pr
         
         if "Product:" in selected_history[0]:
             # We check the type of data currently selected
-            if type_search_product == "Product name":
+            if type_search_product == "product_name":
                 # We eliminate "product: " to conserve the name of the product
                 search_bar = selected_history[0].lstrip('Product: ')
-            elif type_search_product == "Product code":
+            elif type_search_product == "product_code":
                 search_bar = selected_history[5]
                 
         elif "Navigation" in selected_history[0]:
