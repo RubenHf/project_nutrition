@@ -10,14 +10,16 @@ from collections import Counter
 
 # Importing the functions
 from functions.dash_figures import create_figure_products, patch_graphic, figure_result_model
-from functions.dash_components import generate_slider, generate_dropdown, generate_table, generate_radio_items, generate_input, generate_button
 from functions.data_handling import pnns_groups_options, return_df, get_image, get_code, df_sorting, get_nutriscore_image
-from functions.data_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
-from functions.data_handling import generate_texte_image, get_texte_product, testing_img
-from functions.language import get_translate, get_languages_options
+from functions.data_handling import generate_texte_image, get_texte_product, testing_img, get_data
+from functions.language import get_languages_options
 from frontend.navigation_panel import generating_navigating_panel
 from frontend.navigation_result import generating_navigation_result
+from config_store import generating_dcc_store
 from frontend.style import return_style16_nd
+# We import the initials values
+from config import *
+
 
 # Linked to the external CSS file 
 
@@ -33,38 +35,6 @@ versionning = "0.7.1"
 
 DEBUG = True
 
-# Set default language
-initial_language = 'en'
-
-# Retrieve language dictionnary
-translations = get_translate()
-
-option_languages = get_languages_options(translations[initial_language])
-
-products_availability = str(get_data().shape[0])
-
-nutrients = ["fat_100g", "saturated-fat_100g", "carbohydrates_100g", "fiber_100g", "proteins_100g", "salt_100g", "macronutrients_100g"]
-
-slider_trigger = ["slider_energy", "slider_fat", "slider_saturated", "slider_carbohydrates", "slider_fiber", "slider_proteins", "slider_salt", "slider_macronutrients"]
-
-diets = ["Healthier foods", "Fiber rich foods", "Low sugar foods", "Protein rich foods", "Low fat foods", "Low salt foods", "Low saturated fat foods", "Energy rich foods"]
-
-# Default setup
-default_diet = "Healthier foods" 
-
-# Generate list of unique countries and number of products
-unique_countries = products_by_countries(initial_language)
-
-# Generate pnns_groups 1 and 2, and sorted
-pnns_groups_1 = get_pnns_groups_1()
-
-pnns_groups_2 = get_pnns_groups_2()
-
-pnns_groups = get_pnns_groups()
-  
-# to handle increased number of diet
-TOTAL_IMAGES = len(diets) * 20
-
 # Front-end of the app
 app.layout = html.Div([
     # Function generating the left Frontside of the app
@@ -73,19 +43,8 @@ app.layout = html.Div([
     # Function generating the right Frontside of the app
     generating_navigation_result(translations[initial_language], initial_language, pnns_groups_1, pnns_groups_2, pnns_groups, diets, nutrients),
     
-    dcc.Store(id='sliced_file', data=None),
-    dcc.Store(id='personnalized_sorting', data=None),
-    dcc.Store(id='pnns1_chosen', data=None),
-    dcc.Store(id='pnns2_chosen', data=None),
-    dcc.Store(id='search_on', data=False),
-    dcc.Store(id='shown_img', data={f'{diet}_img_{i}': None for diet in diets for i in range(20)}),
-    # To store the client navigation history
-    dcc.Store(id='history', data=[]),
-    dcc.Store(id='loading_history', data=False),
-    dcc.Store(id='prevent_update', data=False),
-    dcc.Store(id='search_bar_data', data=False),
-    # To handle session memory
-    dcc.Store(id='language_user', data=initial_language),
+    # Function generating the dcc_store components, we return a tuple, so we need to unpack
+    *generating_dcc_store(diets, initial_language),
     
 ],id='app-container', style={'justify-content': 'space-between', 'margin': '0', 'padding': '0'})
 
