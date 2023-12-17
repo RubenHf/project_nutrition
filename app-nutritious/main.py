@@ -1,4 +1,10 @@
-﻿import dash
+﻿
+import linecache
+import os
+import tracemalloc
+#tracemalloc.start()
+
+import dash
 from dash import Dash, html, dcc, Output, Input, State, ctx, Patch
 from dash.exceptions import PreventUpdate
 import pandas as pd
@@ -19,6 +25,34 @@ from config_store import generating_dcc_store
 from frontend.style import return_style16_nd
 # We import the initials values
 from config import *
+
+
+"""
+def display_top(snapshot, key_type='lineno', limit=10):
+    snapshot = snapshot.filter_traces((
+        tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
+        tracemalloc.Filter(False, "<unknown>"),
+    ))
+    top_stats = snapshot.statistics(key_type)
+
+    print("Top %s lines" % limit)
+    for index, stat in enumerate(top_stats[:limit], 1):
+        frame = stat.traceback[0]
+        # replace "/path/to/module/file.py" with "module/file.py"
+        filename = os.sep.join(frame.filename.split(os.sep)[-2:])
+        print("#%s: %s:%s: %.1f KiB"
+              % (index, filename, frame.lineno, stat.size / 1024))
+        line = linecache.getline(frame.filename, frame.lineno).strip()
+        if line:
+            print('    %s' % line)
+
+    other = top_stats[limit:]
+    if other:
+        size = sum(stat.size for stat in other)
+        print("%s other: %.1f KiB" % (len(other), size / 1024))
+    total = sum(stat.size for stat in top_stats)
+    print("Total allocated size: %.1f KiB" % (total / 1024))
+"""
 
 
 # Linked to the external CSS file 
@@ -822,7 +856,6 @@ def display_images(*args):
     if condition_selected_a_product == False:
         pnns1_chosen = dash.no_update
         pnns2_chosen = dash.no_update
-
             
     output_values = [title, *subtitles, *images, *styles_images, *textes_images, *others_img, *others_img_style,
                      figure, graphic_gestion_style, selected_diet, selected_product_style, 
@@ -1089,13 +1122,16 @@ def picture_search_div(*args):
     elif ctx.triggered_id in ["search_pnns1_img", "search_pnns2_img"]:
         style_result_model = {'display': 'flex', 'flex-direction': 'column', 'width': '100%', 'margin-top':'20px',
                               'border-bottom': '1px solid black', 'border-top': '4px solid black'}
-        image_contents = {"base64_image": image_contents}
         
         # We send the image to the model
         if ctx.triggered_id == "search_pnns1_img":
-            response = requests.post("https://fast-api-pnns1-cd370c7762e4.herokuapp.com/process-image/", data=image_contents)
+            image_contents = {"base64_image": image_contents, "pnns_groups": "pnns_groups_1"}
+            response = requests.post("http://0.0.0.0:8000/process-image/", data=image_contents)
+            #response = requests.post("https://fast-api-pnns1-cd370c7762e4.herokuapp.com/process-image/", data=image_contents)
         elif ctx.triggered_id == "search_pnns2_img":
-            response = requests.post("https://fast-api-pnns2-d692c6a24a80.herokuapp.com/process-image/", data=image_contents)
+            image_contents = {"base64_image": image_contents, "pnns_groups": "pnns_groups_2"}
+            response = requests.post("http://0.0.0.0:8000/process-image/", data=image_contents)
+            #response = requests.post("https://fast-api-pnns2-d692c6a24a80.herokuapp.com/process-image/", data=image_contents)
         
         try:
             # We put the result into a dataframe
