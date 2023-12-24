@@ -1,9 +1,11 @@
 from dash import html
+from functions.dash_components import generate_button
 from frontend.right_side.advanced_search import generating_advanced_search_page
 from frontend.right_side.browser_search import generating_browser_history_page
 from frontend.right_side.image_search import generating_image_search_page
 from frontend.right_side.image_selection.selected_image import generating_image_selected_page
 from frontend.right_side.image_selection.diet_image import generating_image_by_diet_page
+from frontend.right_side.image_selection.graph import generate_graphic_products
 
 def generating_navigation_result(translations_init, initial_language, pnns_groups_1, pnns_groups_2, pnns_groups, diets, nutrients):
     return html.Div([
@@ -18,8 +20,18 @@ def generating_navigation_result(translations_init, initial_language, pnns_group
         html.Div([
             # To display a selected product at the top
             generating_image_selected_page(translations_init),
+            
+            generate_button(translations_init["Show the distribution of the product"], "top_button_graphic", {'display':'None'}),
+
+            generate_graphic_products("top", translations_init, nutrients, initial_language),
+
             # To display the list of products in different diets
             generating_image_by_diet_page(translations_init, diets, nutrients, initial_language),
+
+            generate_button(translations_init["Show the distribution of the products"], "bottom_button_graphic", {'display':'None'}),
+
+            generate_graphic_products("bottom", translations_init, nutrients, initial_language),
+
         ], style={'display': 'block', 'flex-direction': 'row', 'width': '100%'},  id='images_gestion'),
 
         # Return a Div containing elements for the browser history 

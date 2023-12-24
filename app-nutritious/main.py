@@ -21,34 +21,6 @@ from frontend.style import return_style16_nd
 from config import *
 
 
-"""
-def display_top(snapshot, key_type='lineno', limit=10):
-    snapshot = snapshot.filter_traces((
-        tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
-        tracemalloc.Filter(False, "<unknown>"),
-    ))
-    top_stats = snapshot.statistics(key_type)
-
-    print("Top %s lines" % limit)
-    for index, stat in enumerate(top_stats[:limit], 1):
-        frame = stat.traceback[0]
-        # replace "/path/to/module/file.py" with "module/file.py"
-        filename = os.sep.join(frame.filename.split(os.sep)[-2:])
-        print("#%s: %s:%s: %.1f KiB"
-              % (index, filename, frame.lineno, stat.size / 1024))
-        line = linecache.getline(frame.filename, frame.lineno).strip()
-        if line:
-            print('    %s' % line)
-
-    other = top_stats[limit:]
-    if other:
-        size = sum(stat.size for stat in other)
-        print("%s other: %.1f KiB" % (len(other), size / 1024))
-    total = sum(stat.size for stat in top_stats)
-    print("Total allocated size: %.1f KiB" % (total / 1024))
-"""
-
-
 # Linked to the external CSS file 
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css', '/assets/styles.css']
@@ -89,6 +61,8 @@ app.layout = html.Div([
     Output('referencing', 'children'),
     #Output('images_title', 'children', allow_duplicate=True),
     *[Output(f'{diet}_div', 'children', allow_duplicate=True) for diet in diets],
+    Output('top_button_graphic', 'children'),
+    Output('bottom_button_graphic', 'children'),
     
     Input('dropdown_language', 'value'),
 
@@ -119,12 +93,14 @@ def definition_language_user(input_language):
     place_holder_search = translations[input_language]['search_product']
     children_referencing = f"{translations[input_language]['referenced_products']}: {products_availability}"
     output_subtitles = [translations[input_language][diet] for diet in diets]
+    children_top_graph_button = translations[input_language]['Show the distribution of the product']
+    children_bottom_graph_button = translations[input_language]['Show the distribution of the products']
 
     print("Language_user", time.time() - elapsed_time) if DEBUG else None
 
     return (input_language, options_display, options_type_search, options_language, 
             children_picture_search, children_advanced_search,children_browsing_search, 
-            place_holder_search, children_referencing, *output_subtitles)
+            place_holder_search, children_referencing, *output_subtitles, children_top_graph_button, children_bottom_graph_button)
 
 @app.callback(
     Output('sliced_file', 'data'),
@@ -536,8 +512,8 @@ def clearing_textes_images(*args):
     *[Output(f'{diet}_div_{i}', 'children') for diet in diets for i in range(20)],
     *[Output(f"selected_img_{i}", 'src') for i in range(4)],
     *[Output(f"selected_img_{i}", 'style') for i in range(4)],
-    Output("graph_products_img", 'figure', allow_duplicate=True),
-    Output("graphic_gestion", 'style'),
+    *[Output(f"graphic_gestion_{pos}", 'style') for pos in ['bottom', 'top']],
+    *[Output(f"{pos}_button_graphic", 'style') for pos in ['bottom', 'top']],
     Output('personnalized_sorting', 'data', allow_duplicate=True),
     Output("selected_product_style", 'style'),
     Output("selected_product_img", 'src'),
@@ -553,6 +529,7 @@ def clearing_textes_images(*args):
     Output('pnns1_chosen', 'data', allow_duplicate=True),
     Output('pnns2_chosen', 'data', allow_duplicate=True),
     Output('picture_search_div', 'style', allow_duplicate=True),
+    Output('data_figure', 'data'),
     
     *[Input(f'{diet}_div', 'n_clicks') for diet in diets],
     *[Input(f'{diet}_img_{i}', 'n_clicks') for diet in diets for i in range(20)],
@@ -565,8 +542,6 @@ def clearing_textes_images(*args):
     Input('multiple_product_dropdown', 'value'),
     
     State('type_search_product', 'value'),
-    State('dropdown_nutrients_img', 'value'),
-    State('check_list_graph_img','value'),
     State('personnalized_sorting', 'data'),
     State('sliced_file', 'data'),
     State("dropdown_diet", "value"), 
@@ -577,6 +552,7 @@ def clearing_textes_images(*args):
     State('prevent_update', 'data'),
     State('input_search_adv', 'value'),
     State('language_user', 'data'),
+    State('data_figure', 'data'),
     
     prevent_initial_call=True,
 )
@@ -586,8 +562,8 @@ def display_images(*args):
     
     # We unpack the args
     (pnns1_chosen, pnns2_chosen, country, search_bar, clicked_search, click_advanced_search, value_multiple_dropdown,
-     type_search_product, nutrients_choice, ch_list_graph, selected_diet, df_slice, dropdown_diet, search_on, 
-     n_best, shown_img_data, history_nav, prevent_update, user_input, language) = args[-20:]
+     type_search_product, selected_diet, df_slice, 
+     dropdown_diet, search_on, n_best, shown_img_data, history_nav, prevent_update, user_input, language, data_figure) = args[-19:]
     
     # Return true if one of the diet was click.
     # It is helping for the browser history
@@ -598,19 +574,16 @@ def display_images(*args):
     # Initialize 
     no_display = {'display':'None'}
     images, styles_images, textes_images = [dash.no_update] * TOTAL_IMAGES, [no_display] * TOTAL_IMAGES, [None] * TOTAL_IMAGES
+    style_top_graph_button, style_bottom_graph_button = no_display, no_display
     others_img, others_img_style = [None] * 4, [no_display] * 4
-    subtitles, title, figure = [None] * len(diets), None, dash.no_update 
+    subtitles, title = [None] * len(diets), None
     selected_product_img, selected_product_title, selected_product_texte = None, None, None
-    graphic_gestion_style, selected_product_style, advanced_search_style = no_display, no_display, no_display
+    graphic_gestion_style_bottom, graphic_gestion_style_top, selected_product_style, advanced_search_style = no_display, no_display, no_display, no_display
     search_on = False if search_on else dash.no_update
     selected_diet = None if selected_diet != None else dash.no_update
     style_multiple_dropdown = no_display
     style_picture_search_div = no_display
     browser_history_style = no_display
-    
-     # We take a Patch() to modify only some elements of the figure
-    patched_figure = Patch()
-    nutrients_choice = nutrients_choice if nutrients_choice not in [None, []] else nutrients 
     
     # Setting some conditions
     condition_selected_a_product = ctx.triggered_id in ["search_bar", "multiple_product_dropdown"] + [f'{diet}_img_{i}' for diet in diets for i in range(20)]
@@ -682,12 +655,8 @@ def display_images(*args):
                     images = testing_img(images)
                     # Replace images
                     images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
-                            # Creating a figure of the data distribution 
                     
-                    figure = patch_graphic(patched_figure, df, df_N_best, 
-                                                           ch_list_graph, nutrients_choice, ["A", "B"], language)
-
-                    graphic_gestion_style = {'display':'block'}
+                    style_bottom_graph_button = {'display':'block', 'color': 'black'}
         
                 # When the user doesn't specifie a diet to search on
                 elif selected_diet == "All":
@@ -794,9 +763,6 @@ def display_images(*args):
 
                 prevent_update, pnns1_chosen, pnns2_chosen = ([dash.no_update]*3)
 
-                figure = patch_graphic(patched_figure, None, df_product, 
-                                               ch_list_graph, nutrients_choice, ["B"], language)
-
             else:
                 df = return_df(country, pnns1, pnns2).copy()
 
@@ -811,13 +777,8 @@ def display_images(*args):
                 # Replace images
                 images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
                 
-                # Creating a figure of the data distribution 
-                figure = patch_graphic(patched_figure, df, df_product, 
-                                               ch_list_graph, nutrients_choice, ["A", "B"], language)
                 prevent_update = pnns2
                 pnns1_chosen, pnns2_chosen = pnns1, pnns2
-
-            graphic_gestion_style = {'display':'block'}
             
         except:
             selected_product_img = dash.get_asset_url("no_image.jpg")
@@ -828,10 +789,10 @@ def display_images(*args):
             subtitles = [dash.no_update] * len(diets)
             styles_images = [dash.no_update] * TOTAL_IMAGES
             textes_images = [dash.no_update] * TOTAL_IMAGES
-            graphic_gestion_style = dash.no_update
             prevent_update = None
         
         selected_product_style = {'display':'block'}
+        style_top_graph_button = {'display':'block', 'color': 'black'}
         
     elif ctx.triggered_id == 'advanced_search_button':
         
@@ -852,10 +813,11 @@ def display_images(*args):
         pnns2_chosen = dash.no_update
             
     output_values = [title, *subtitles, *images, *styles_images, *textes_images, *others_img, *others_img_style,
-                     figure, graphic_gestion_style, selected_diet, selected_product_style, 
+                     graphic_gestion_style_bottom, graphic_gestion_style_top, style_bottom_graph_button, style_top_graph_button, 
+                     selected_diet, selected_product_style, 
                      selected_product_img, selected_product_title, selected_product_texte,
                      advanced_search_style, search_on, shown_img_data, history_nav, style_multiple_dropdown, 
-                     browser_history_style, prevent_update, pnns1_chosen, pnns2_chosen, style_picture_search_div]
+                     browser_history_style, prevent_update, pnns1_chosen, pnns2_chosen, style_picture_search_div, data_figure]
     
     print("display_images: ", time.time() - elapsed_time) if DEBUG else None  
     return tuple(output_values)
@@ -885,10 +847,12 @@ def changing_image_selected_product(*args):
         return dash.no_update
 
 @app.callback(
-    Output("graph_products_img", 'figure', allow_duplicate=True),
-    
-    Input('dropdown_nutrients_img', 'value'),
-    Input('check_list_graph_img','value'),
+    *[Output(f"graph_products_img_{pos}", 'figure') for pos in ['bottom', 'top']],
+    *[Output(f"graphic_gestion_{pos}", 'style', allow_duplicate=True) for pos in ['bottom', 'top']],
+
+    *[Input(f"{pos}_button_graphic", 'n_clicks') for pos in ['bottom', 'top']],
+    *[Input(f"dropdown_nutrients_img_{pos}", 'value') for pos in ['bottom', 'top']],
+    *[Input(f"check_list_graph_img_{pos}", 'value') for pos in ['bottom', 'top']],
     
     State('pnns1_chosen', 'data'),
     State('pnns2_chosen', 'data'),
@@ -904,29 +868,49 @@ def changing_image_selected_product(*args):
     prevent_initial_call=True,
 )
 # When modifying the graphic
-def modifying_graph(nutrients_choice, ch_list_graph, pnns1_chosen, pnns2_chosen, country, 
-                    selected_diet, df_slice, dropdown_diet, search_on, n_best, language):
+def modifying_graph(bottom_button, top_button, nutrients_choice_bottom, nutrients_choice_top, ch_list_graph_bottom, ch_list_graph_top,
+                    pnns1_chosen, pnns2_chosen, country, selected_diet, df_slice, dropdown_diet, search_on, n_best, language):
     elapsed_time = time.time() if DEBUG else None
+
+    # We do not update at first. Only the one selected will be updated
+    figure_bottom, figure_top = dash.no_update, dash.no_update
+    graphic_gestion_style_bottom, graphic_gestion_style_top = dash.no_update, dash.no_update
+    
+    # We use the patch for smaller modification
+    patched_figure_bottom, patched_figure_top = Patch(), Patch()
+
     if search_on:
         df = pd.read_json(StringIO(df_slice), orient='split')         
         df_N_best = df_sorting(dropdown_diet, df).head(n_best)
     else:
         df = return_df(country, pnns1_chosen, pnns2_chosen)
         df_N_best = df_sorting(selected_diet, df).head(n_best)
+
+    if ctx.triggered_id in ["bottom_button_graphic", "dropdown_nutrients_img_bottom", "check_list_graph_img_bottom"]:
+        graphic_gestion_style_bottom = {'display':'block'}
+        graphic_gestion_style_top = {'display':'None'}
+
+        if ctx.triggered_id == "check_list_graph_img_bottom":
+            figure_bottom = create_figure_products(df, nutrients, nutrients_choice_bottom, ch_list_graph_bottom, df_N_best, language)
+            
+        else:
+            nutrients_choice = nutrients_choice_bottom if nutrients_choice_bottom not in [None, []] else nutrients
+            figure_bottom = patch_graphic(patched_figure_bottom, df, df_N_best, ch_list_graph_bottom, nutrients_choice, ["A", "B"], language)
+
+    elif ctx.triggered_id in ["top_button_graphic", "dropdown_nutrients_img_top", "check_list_graph_img_top"]:
+        graphic_gestion_style_bottom = {'display':'None'}
+        graphic_gestion_style_top = {'display':'block'}
         
-    if ctx.triggered_id == "dropdown_nutrients_img":
-        # We check the nutrients_choice 
-        nutrients_choice = nutrients_choice if nutrients_choice not in [None, []] else nutrients
-        # We use the patch
-        patched_figure = Patch()
-        figure = patch_graphic(patched_figure, df, df_N_best, ch_list_graph, nutrients_choice, ["A", "B"], language)
-    
-    else : 
-        figure = create_figure_products(df, nutrients, nutrients_choice, ch_list_graph, df_N_best, language)
+        if ctx.triggered_id == "check_list_graph_img_bottom":
+            figure_bottom = create_figure_products(df, nutrients, nutrients_choice_bottom, ch_list_graph_bottom, df_N_best, language)
+
+        else:
+            nutrients_choice = nutrients_choice_top if nutrients_choice_top not in [None, []] else nutrients
+            figure_top = patch_graphic(patched_figure_top, df, df_N_best, ch_list_graph_top, nutrients_choice, ["A", "B"], language)
     
     print("modifying_graph: ", time.time() - elapsed_time) if DEBUG else None 
     
-    return figure
+    return figure_bottom, figure_top, graphic_gestion_style_bottom, graphic_gestion_style_top
 
 @app.callback(
     Output('arrow_button_panel', 'children'),

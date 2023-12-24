@@ -143,6 +143,8 @@ def get_translate():
         'Probabilities to be correct': 'Probabilities to be correct',
         'Results of prediction model from the image': 'Results of prediction model from the image',
         'Select a language': 'Select a language',
+        'Show the distribution of the product': 'Show the distribution of the product',
+        'Show the distribution of the products': 'Show the distribution of the products',
         
     },
 
@@ -262,6 +264,8 @@ def get_translate():
         'Probabilities to be correct': 'Probabilités d\'être correct',
         'Results of prediction model from the image': 'Résultats du modèle de prédiction à partir de l\'image',
         'Select a language': 'Sélectionnez une langue',
+        'Show the distribution of the product': 'Afficher la distribution du produit',
+        'Show the distribution of the products': 'Afficher la distribution des produits',
         
         
     },
@@ -381,6 +385,8 @@ def get_translate():
         'Probabilities to be correct': 'Wahrscheinlichkeiten, richtig zu sein',
         'Results of prediction model from the image': 'Ergebnisse des Vorhersagemodells aus dem Bild',
         'Select a language': 'Wählen Sie eine Sprache aus',
+        'Show the distribution of the product': 'Zeigen Sie die Verteilung des Produkts',
+        'Show the distribution of the products': 'Zeigen Sie die Verteilung der Produkte',
         
         
     },
@@ -500,6 +506,8 @@ def get_translate():
         'Probabilities to be correct': 'Sandsynligheder for at være korrekt',
         'Results of prediction model from the image': 'Resultater af forudsigelsesmodellen fra billedet',
         'Select a language': 'Vælg et sprog',
+        'Show the distribution of the product': 'Vis fordelingen af produktet',
+        'Show the distribution of the products': 'Vis fordelingen af produkterne',
         
        
     }

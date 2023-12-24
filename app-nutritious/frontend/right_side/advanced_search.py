@@ -4,6 +4,8 @@ from frontend.style import return_style24
 
 # Advanced search page
 
+style_dropdown = {'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}
+
 # We return a Html.Div that contains everything for the advanced search page
 def generating_advanced_search_page(translations_init, pnns_groups_1, diets):
     return html.Div([
@@ -13,22 +15,22 @@ def generating_advanced_search_page(translations_init, pnns_groups_1, diets):
         # Dropdown for the pnns_groups_1
         html.Div([
             generate_dropdown(None, pnns_groups_1, translations_init['choose_pnns_group_1'], False, 'dropdown_pnns1')
-        ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
+        ], style=style_dropdown),
 
         # Dropdown for the pnns_groups_2
         html.Div([
             generate_dropdown(None, [], translations_init['choose_pnns_group_2'], False, 'dropdown_pnns2')
-        ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
+        ], style=style_dropdown),
         
         # Input to search product
         html.Div([
             generate_input(translations_init['search_product_optional'], "input_search_adv")
-        ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
+        ], style=style_dropdown),
 
         # Dropdown for the diet
         html.Div([
             generate_dropdown(None, diets, translations_init['choose_nutritious_plan'], False, 'dropdown_diet')
-        ], style={'width': '75%', 'margin': '0 auto', 'margin-bottom': '20px'}),
+        ], style=style_dropdown),
 
         # Sliders controling which products we show
         html.Div([

@@ -17,5 +17,6 @@ def generating_dcc_store(diets, initial_language):
         dcc.Store(id='prevent_update', data=False),
         dcc.Store(id='search_bar_data', data=False),
         # To handle session memory
-        dcc.Store(id='language_user', data=initial_language)
+        dcc.Store(id='language_user', data=initial_language),
+        dcc.Store(id='data_figure', data=[])
     )
