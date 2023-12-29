@@ -12,6 +12,7 @@ from collections import Counter
 from functions.dash_figures import create_figure_products, patch_graphic, figure_result_model
 from functions.data_handling import pnns_groups_options, return_df, get_image, get_code, df_sorting, get_nutriscore_image
 from functions.data_handling import generate_texte_image, get_texte_product, testing_img, get_data
+from functions.display_images import *
 from functions.language import get_languages_options
 from frontend.navigation_panel import generating_navigating_panel
 from frontend.navigation_result import generating_navigation_result

@@ -3,22 +3,12 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 from io import BytesIO
 import tensorflow as tf
-import pickle
-
-import numpy as np
-
+from functions.loading_models import load_API_models
 
 app = FastAPI()
 
-## I load a model developped to determine if the image is appropriate (Front or back)
-
-def load_model(model_save_path):
-    model = tf.keras.models.load_model(model_save_path)
-    with open("model/preprocess_input.pkl", "rb") as f:
-        preprocess_input = pickle.load(f)
-    return model, preprocess_input
-
-loaded_model, loaded_preprocess_input = load_model("model/model_best_weights.h5")
+# We load the model and the preprocess
+loaded_model, loaded_preprocess_input = load_API_models()
 
 def preprocess_image(image, preprocess_input):
     # Apply the same preprocessing as during training
@@ -38,7 +28,9 @@ def predict_on_image(model, image_path, preprocess_input):
     predictions = model.predict(preprocessed_image)
     return predictions
 
-
+# Alternative to numpy.argmax 
+def argmax(result):
+    return max(range(len(result)), key=result.__getitem__)
 
 def process_image(file_contents: bytes, file_extension: str):
     # Process the image here
@@ -47,7 +39,7 @@ def process_image(file_contents: bytes, file_extension: str):
 
     result = predict_on_image(loaded_model, BytesIO(file_contents), loaded_preprocess_input)
     
-    result = np.argmax(result)
+    result = argmax(result)
     
     # Return a dictionary or any other data you want
     return {"status": "success", "result": str(result)}
