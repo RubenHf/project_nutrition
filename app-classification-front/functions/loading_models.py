@@ -5,8 +5,12 @@ import boto3
 
 # Load the model from the path
 def load_model(model_save_path):
-    model = tf.keras.models.load_model(model_save_path)
-    return model
+    if os.path.exists(url):
+        model = tf.keras.models.load_model(model_save_path)
+        return model
+    else:
+        print(f"Error: File '{url}' not found.")
+        return None 
 
 # Load preprocess
 def load_preprocess(url):
@@ -48,7 +52,7 @@ def load_API_models():
     # We download the files in the app directory
     download_file_from_s3(bucket_name, model1_file, local_model_path)
     download_file_from_s3(bucket_name, preprocess_file, local_preprocess_path)
-
+    print(os.listdir(directory_path))
     # We load the models and preprocess
     loaded_model = load_model(local_model_path)
     loaded_preprocess_input = load_preprocess(local_preprocess_path)
