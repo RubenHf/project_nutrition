@@ -5,7 +5,7 @@ import boto3
 
 # Load the model from the path
 def load_model(model_save_path):
-    if os.path.exists(url):
+    if os.path.exists(model_save_path):
         model = tf.keras.models.load_model(model_save_path)
         return model
     else:
