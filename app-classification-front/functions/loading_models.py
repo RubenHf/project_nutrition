@@ -10,9 +10,13 @@ def load_model(model_save_path):
 
 # Load preprocess
 def load_preprocess(url):
-    with open(url, "rb") as f:
-        preprocess_input = pickle.load(f)
-    return preprocess_input
+    if os.path.exists(url):
+        with open(url, "rb") as f:
+            preprocess_input = pickle.load(f)
+        return preprocess_input
+    else:
+        print(f"Error: File '{url}' not found.")
+        return None 
 
 # Function to load a file from S3
 def download_file_from_s3(bucket_name, object_key, local_file_path):
