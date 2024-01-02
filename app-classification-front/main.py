@@ -36,16 +36,19 @@ def argmax(result):
         return max(range(len(result)), key=result.__getitem__)
 
 def process_image(file_contents: bytes, file_extension: str):
-    # Process the image here
-    # For demonstration purposes, just convert it to grayscale
-    image = Image.open(BytesIO(file_contents))
+    # Predict on the image
 
     result = predict_on_image(loaded_model, BytesIO(file_contents), loaded_preprocess_input)
-    
+
     result_prediction = argmax(result)
     
     # Return a dictionary or any other data you want
     return {"status": "success", "result": str(result_prediction)}
+
+
+@app.get("/")
+def home():
+    return {"health_check": "OK"}
 
 
 @app.post("/process-image/")

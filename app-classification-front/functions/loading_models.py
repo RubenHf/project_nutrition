@@ -68,3 +68,4 @@ def load_API_models():
     remove_local_file(local_preprocess_path)
 
     return loaded_model, loaded_preprocess_input
+    
