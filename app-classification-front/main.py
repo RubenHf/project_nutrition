@@ -10,18 +10,13 @@ app = FastAPI()
 # We load the model and the preprocess
 loaded_model, loaded_preprocess_input = load_API_models()
 
-def preprocess_image(image, preprocess_input):
-    # Apply the same preprocessing as during training
-    # You can use the preprocess_input function from your original project
-    # If preprocess_input is not available, you can apply any necessary preprocessing
-    return preprocess_input(image)
-
 def load_and_preprocess_image(image_path, preprocess_input):
     # Load and preprocess a single image
-    img = tf.keras.preprocessing.image.load_img(image_path, target_size=(299, 299))
-    img_array = tf.keras.preprocessing.image.img_to_array(img)
-    img_array = tf.expand_dims(img_array, 0)  # Create batch dimension
-    return preprocess_image(img_array, preprocess_input)
+    with tf.keras.preprocessing.image.load_img(image_path, target_size=(299, 299)) as img:
+        #img = tf.keras.preprocessing.image.load_img(image_path, target_size=(299, 299))
+        img_array = tf.keras.preprocessing.image.img_to_array(img)
+        img_array = tf.expand_dims(img_array, 0)  # Create batch dimension
+        return preprocess_input(img_array)
 
 def predict_on_image(model, image_path, preprocess_input):
     preprocessed_image = load_and_preprocess_image(image_path, preprocess_input)
