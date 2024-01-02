@@ -62,10 +62,11 @@ def load_API_models():
     loaded_preprocess_input = load_preprocess(local_preprocess_path)
 
     print("Deleting files...")
-
+    print(os.listdir())
     # We remove the files from the app directory
     remove_local_file(local_model_path)
     remove_local_file(local_preprocess_path)
+    print(os.listdir())
 
     return loaded_model, loaded_preprocess_input
     
