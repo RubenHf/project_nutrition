@@ -49,13 +49,19 @@ def load_API_models():
     local_model_path = 'local_model_front_back.h5'
     local_preprocess_path = 'local_preprocess_input.pkl'
 
+    print("Downloading files...")
+
     # We download the files in the app directory
     download_file_from_s3(bucket_name, model1_file, local_model_path)
     download_file_from_s3(bucket_name, preprocess_file, local_preprocess_path)
-    print(os.listdir(os.getcwd()))
+
+    print("Loading files...")
+
     # We load the models and preprocess
     loaded_model = load_model(local_model_path)
     loaded_preprocess_input = load_preprocess(local_preprocess_path)
+
+    print("Deleting files...")
 
     # We remove the files from the app directory
     remove_local_file(local_model_path)
