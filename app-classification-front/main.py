@@ -4,6 +4,7 @@ from PIL import Image
 from io import BytesIO
 import tensorflow as tf
 from functions.loading_models import load_API_models
+import gc
 
 app = FastAPI()
 
@@ -20,8 +21,10 @@ def load_and_preprocess_image(image_path, preprocess_input):
 
 def predict_on_image(model, image_path, preprocess_input):
     preprocessed_image = load_and_preprocess_image(image_path, preprocess_input)
-    predictions = model.predict(preprocessed_image)
-    return predictions
+    
+    gc.collect()
+    #return model.predict(preprocessed_image)
+    return model(preprocessed_image)
 
 # Alternative to numpy.argmax 
 def argmax(result):
@@ -33,18 +36,18 @@ def argmax(result):
 def process_image(file_contents: bytes, file_extension: str):
     # Predict on the image
 
-    result = predict_on_image(loaded_model, BytesIO(file_contents), loaded_preprocess_input)
-
-    result_prediction = argmax(result)
-    
+    result_prediction = argmax(predict_on_image(loaded_model, 
+                                BytesIO(file_contents), 
+                                loaded_preprocess_input))
+    gc.collect()
+    result_prediction = str(result_prediction)
     # Return a dictionary or any other data you want
-    return {"status": "success", "result": str(result_prediction)}
+    return {"status": "success", "result": result_prediction}
 
 
 @app.get("/")
 def home():
     return {"health_check": "OK"}
-
 
 @app.post("/process-image/")
 async def process_image_endpoint(file: UploadFile = File(...)):
@@ -61,6 +64,8 @@ async def process_image_endpoint(file: UploadFile = File(...)):
 
         # Process the image
         result = process_image(file_contents, file_extension)
+
+        gc.collect()
 
         return JSONResponse(content=result)
     except Exception as e:

@@ -2,12 +2,13 @@ import pickle
 import tensorflow as tf
 import os
 import boto3
+import gc
+
 
 # Load the model from the path
 def load_model(model_save_path):
     if os.path.exists(model_save_path):
-        model = tf.keras.models.load_model(model_save_path)
-        return model
+        return tf.keras.models.load_model(model_save_path)
     else:
         print(f"Error: File '{url}' not found.")
         return None 
@@ -16,8 +17,7 @@ def load_model(model_save_path):
 def load_preprocess(url):
     if os.path.exists(url):
         with open(url, "rb") as f:
-            preprocess_input = pickle.load(f)
-        return preprocess_input
+            return pickle.load(f)
     else:
         print(f"Error: File '{url}' not found.")
         return None 
@@ -34,8 +34,11 @@ def download_file_from_s3(bucket_name, object_key, local_file_path):
 
 def remove_local_file(file_path):
     try:
-        # Remove local object
-        os.remove(file_path)
+        if os.path.exists(file_path):
+            # Remove local object
+            os.remove(file_path)
+        else: 
+            print("No file present")
     except Exception as e:
         print(f"Error removing file: {str(e)}")
 
@@ -62,11 +65,10 @@ def load_API_models():
     loaded_preprocess_input = load_preprocess(local_preprocess_path)
 
     print("Deleting files...")
-    print(os.listdir())
     # We remove the files from the app directory
     remove_local_file(local_model_path)
     remove_local_file(local_preprocess_path)
-    print(os.listdir())
 
+    gc.collect()
     return loaded_model, loaded_preprocess_input
     
