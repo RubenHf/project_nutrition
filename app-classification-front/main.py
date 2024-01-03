@@ -33,11 +33,11 @@ def argmax(result):
     else: 
         return max(range(len(result)), key=result.__getitem__)
 
-def process_image(file_contents: bytes, file_extension: str):
+def process_image(image_content):
     # Predict on the image
 
     result_prediction = argmax(predict_on_image(loaded_model, 
-                                BytesIO(file_contents), 
+                                image_content, 
                                 loaded_preprocess_input))
     gc.collect()
     result_prediction = str(result_prediction)
@@ -60,10 +60,10 @@ async def process_image_endpoint(file: UploadFile = File(...)):
         file_contents = await file.read()
 
         # Get the file extension (png or jpeg)
-        file_extension = file.content_type.split("/")[-1]
+        #file_extension = file.content_type.split("/")[-1]
 
         # Process the image
-        result = process_image(file_contents, file_extension)
+        result = process_image(BytesIO(file_contents))
 
         gc.collect()
 
