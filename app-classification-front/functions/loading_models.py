@@ -15,7 +15,7 @@ def load_model(url):
     if os.path.exists(url):
         return tf.keras.models.load_model(url)
     else:
-        print(f"Error: File '{url}' not found.")
+        logger.warning(f"No file present at '{url}'")
         return None 
 
 # Load preprocess from the path
@@ -24,7 +24,7 @@ def load_preprocess(path):
         with open(path, "rb") as f:
             return pickle.load(f)
     else:
-        print(f"Error: File '{path}' not found.")
+        logger.warning(f"No file present at '{path}'")
         return None 
 
 # Function to load a file from S3
@@ -47,7 +47,7 @@ def remove_local_file(file_path):
             os.remove(file_path)
             logger.info(f"Removing file '{file_path}'")
         else: 
-            logger.info(f"'{file_path}' not present in folder")
+            logger.warning(f"No file present at '{file_path}'")
     except Exception as e:
         logger.error(f"Error removing file '{file_path}': {str(e)}")
 
