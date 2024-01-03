@@ -3,6 +3,11 @@ import tensorflow as tf
 import os
 import boto3
 import gc
+import logging
+
+# Set up logging configuration
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # Load the model from the path
@@ -29,8 +34,10 @@ def download_file_from_s3(bucket_name, object_key, local_file_path):
     try:
         # Download object in local from bucket
         s3.download_file(bucket_name, object_key, local_file_path)
+        logger.info(f"Downloaded file '{object_key}' to '{local_file_path}'")
+    
     except Exception as e:
-        print(f"Error downloading file: {str(e)}")
+        logger.error(f"Error downloading file '{object_key}': {str(e)}")
 
 # Function to remove the files downloaded
 def remove_local_file(file_path):
@@ -38,10 +45,11 @@ def remove_local_file(file_path):
         if os.path.exists(file_path):
             # Remove local object
             os.remove(file_path)
+            logger.info(f"Removing file '{file_path}'")
         else: 
-            print("No file present")
+            logger.info(f"'{file_path}' not present in folder")
     except Exception as e:
-        print(f"Error removing file: {str(e)}")
+        logger.error(f"Error removing file '{file_path}': {str(e)}")
 
 def load_API_models():
     # S3 bucket from the project and files
@@ -53,19 +61,19 @@ def load_API_models():
     local_model_path = 'local_model_front_back.h5'
     local_preprocess_path = 'local_preprocess_input.pkl'
 
-    print("Downloading files...")
+    print("[INFO] Downloading files...")
 
     # We download the files in the app directory
     download_file_from_s3(bucket_name, model1_file, local_model_path)
     download_file_from_s3(bucket_name, preprocess_file, local_preprocess_path)
 
-    print("Loading files...")
+    print("[INFO] Loading files...")
 
     # We load the models and preprocess
     loaded_model = load_model(local_model_path)
     loaded_preprocess_input = load_preprocess(local_preprocess_path)
 
-    print("Deleting files...")
+    print("[INFO] Deleting files...")
     # We remove the files from the app directory
     remove_local_file(local_model_path)
     remove_local_file(local_preprocess_path)
