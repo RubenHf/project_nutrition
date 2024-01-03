@@ -6,20 +6,20 @@ import gc
 
 
 # Load the model from the path
-def load_model(model_save_path):
-    if os.path.exists(model_save_path):
-        return tf.keras.models.load_model(model_save_path)
+def load_model(url):
+    if os.path.exists(url):
+        return tf.keras.models.load_model(url)
     else:
         print(f"Error: File '{url}' not found.")
         return None 
 
-# Load preprocess
-def load_preprocess(url):
-    if os.path.exists(url):
-        with open(url, "rb") as f:
+# Load preprocess from the path
+def load_preprocess(path):
+    if os.path.exists(path):
+        with open(path, "rb") as f:
             return pickle.load(f)
     else:
-        print(f"Error: File '{url}' not found.")
+        print(f"Error: File '{path}' not found.")
         return None 
 
 # Function to load a file from S3
@@ -32,6 +32,7 @@ def download_file_from_s3(bucket_name, object_key, local_file_path):
     except Exception as e:
         print(f"Error downloading file: {str(e)}")
 
+# Function to remove the files downloaded
 def remove_local_file(file_path):
     try:
         if os.path.exists(file_path):

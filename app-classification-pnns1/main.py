@@ -4,31 +4,32 @@ from io import BytesIO
 import base64
 import tensorflow as tf
 from functions.loading_models import load_API_models
+import gc
 
 app = FastAPI()
 
 # We load the models and the preprocess
 loaded_model_pnns1, loaded_model_pnns2, loaded_preprocess_input = load_API_models()
 
-def preprocess_image(image, preprocess_input):
-    # Apply the same preprocessing as during training
-    # You can use the preprocess_input function from your original project
-    # If preprocess_input is not available, you can apply any necessary preprocessing
-    return preprocess_input(image)
-
-def load_and_preprocess_image(image_path, preprocess_input):
+def load_and_preprocess_image(image_path):
     # Load and preprocess a single image
-    img = tf.keras.preprocessing.image.load_img(image_path, target_size=(299, 299))
-    img_array = tf.keras.preprocessing.image.img_to_array(img)
-    img_array = tf.expand_dims(img_array, 0)  # Create batch dimension
-    return preprocess_image(img_array, preprocess_input)
+    with tf.keras.preprocessing.image.load_img(image_path, target_size=(299, 299)) as img:
+        img_array = tf.keras.preprocessing.image.img_to_array(img)
+        img_array = tf.expand_dims(img_array, 0)  # Create batch dimension
+        
 
-def predict_on_image(model, image_path, preprocess_input):
-    preprocessed_image = load_and_preprocess_image(image_path, preprocess_input)
+        gc.collect()
+        # We use the loaded preprocess
+        return loaded_preprocess_input(img_array)
+
+def predict_on_image(model, image_path):
+    preprocessed_image = load_and_preprocess_image(image_path)
     predictions = model.predict(preprocessed_image)
+    gc.collect()
+    
     return predictions
 
-def img_prediction_model_pnns(model_pnns, pnns_groups, image, preprocess_input):
+def img_prediction_model_pnns(model_pnns, pnns_groups, image):
     
     if pnns_groups == "pnns_groups_1":
         list_pnns = ['Composite foods', 'Fruits and vegetables', 'Cereals and potatoes', 'Fat and sauces',
@@ -44,7 +45,7 @@ def img_prediction_model_pnns(model_pnns, pnns_groups, image, preprocess_input):
                      'Milk and yogurt', 'Artificially sweetened beverages', 'Potatoes', 'Soups', 'Ice cream',
                      'Offals', 'Waters and flavored waters', 'Fruit nectars']
 
-    result = predict_on_image(model_pnns, image, preprocess_input)
+    result = predict_on_image(model_pnns, image)
     
     image_proba = []
     
@@ -58,21 +59,21 @@ def img_prediction_model_pnns(model_pnns, pnns_groups, image, preprocess_input):
     # Convert the sorted list of tuples to a list of dictionaries
     image_proba = [{"pnns_groups": pnns, "probabilities": proba} for pnns, proba in image_proba]
     
+    del result
+    gc.collect()
+
     return image_proba
 
 # Alternative to numpy.argmax 
 def argmax(result):
-    return max(range(len(result)), key=result.__getitem__)
+    if len(result) == 1: # When list is nested
+        return max(range(len(result[0])), key=result[0].__getitem__)
+    else: 
+        return max(range(len(result)), key=result.__getitem__)
 
-def process_image(file_contents: bytes, file_extension: str):
-
-    result = predict_on_image(loaded_model, BytesIO(file_contents), loaded_preprocess_input)
-
-    #result = np.argmax(result)
-    result = argmax(result)
-    
-    # Return a dictionary or any other data you want
-    return {"status": "success", "result": str(result)}
+@app.get("/")
+def home():
+    return {"health_check": "OK"}
 
 @app.post("/process-image/")
 async def process_image_endpoint(
@@ -107,6 +108,8 @@ async def process_image_endpoint(
         elif pnns_groups == "pnns_groups_2":
             result = img_prediction_model_pnns(loaded_model_pnns2, pnns_groups, BytesIO(file_contents), loaded_preprocess_input)
         
+        gc.collect()
+
         #df_result = df_result.to_dict(orient='records')
         return JSONResponse(content=result)
 
