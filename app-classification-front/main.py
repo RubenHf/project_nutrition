@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
+from typing import List
 from PIL import Image
 from io import BytesIO
 import tensorflow as tf
@@ -64,5 +65,32 @@ async def process_image_endpoint(file: UploadFile = File(...)):
         gc.collect()
 
         return JSONResponse(content=result)
+    except Exception as e:
+        return JSONResponse(content={"status": "error", "message": str(e)})
+    
+@app.post("/process-batch-images/")
+async def process_batch_images_endpoint(files: List[UploadFile] = File(...)):
+    try:
+        # Check if files list is empty
+        if not files:
+            raise ValueError("No files provided.")
+
+        # Process each image in the batch
+        results = []
+        for file in files:
+            if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
+                raise ValueError(f"Only PNG, JPEG, or JPG images are allowed. File: {file.filename}")
+
+            # Read the file content
+            file_contents = await file.read()
+
+            # Process the image
+            result = process_image(BytesIO(file_contents))
+            results.append(result)
+
+        # Clear memory (optional)
+        gc.collect()
+
+        return JSONResponse(content=results)
     except Exception as e:
         return JSONResponse(content={"status": "error", "message": str(e)})
