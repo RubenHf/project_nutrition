@@ -4,18 +4,18 @@ from typing import List
 from PIL import Image
 from io import BytesIO
 import tensorflow as tf
-from functions.loading_models import load_API_models
+from functions.loading_models import load_API_models, get_model_input_size
 import gc
 
 app = FastAPI()
 
 # We load the model and the preprocess
 loaded_model, loaded_preprocess_input = load_API_models()
+target_size = get_model_input_size(loaded_model)
 
 def load_and_preprocess_image(image_path):
     # Load and preprocess a single image
-    with tf.keras.preprocessing.image.load_img(image_path, target_size=(299, 299)) as img:
-        #img = tf.keras.preprocessing.image.load_img(image_path, target_size=(299, 299))
+    with tf.keras.preprocessing.image.load_img(image_path, target_size=target_size) as img:
         img_array = tf.keras.preprocessing.image.img_to_array(img)
         img_array = tf.expand_dims(img_array, 0)  # Create batch dimension
         

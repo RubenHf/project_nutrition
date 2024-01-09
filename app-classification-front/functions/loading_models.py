@@ -26,6 +26,11 @@ def load_preprocess(path):
     else:
         logger.warning(f"No file present at '{path}'")
         return None 
+    
+# Get the input shape of the model
+def get_model_input_size(model):
+    input_shape = model.layers[0].input_shape[1:3]
+    return input_shape
 
 # Function to load a file from S3
 def download_file_from_s3(bucket_name, object_key, local_file_path):
