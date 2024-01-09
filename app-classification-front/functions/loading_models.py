@@ -68,8 +68,6 @@ def load_API_models():
     # Local file paths to save the downloaded files
     local_model_path = 'local_model_front_back.h5'
     local_preprocess_path = 'local_preprocess_input.pkl'
-    local_model_path = 'model/model_classification_front_back_mobilevnet2.h5'
-    local_preprocess_path = 'model/preprocess_input_mobilevnet2.pkl'
 
     print("[INFO] Downloading files...")
 
