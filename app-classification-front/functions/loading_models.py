@@ -55,7 +55,7 @@ def load_API_models():
     # S3 bucket from the project and files
     bucket_name = 'nutritious.app'
     model1_file = 'developped_models/model_classification_front_back_mobilevnet2.h5'
-    preprocess_file = 'developped_models/preprocess_input.pkl'
+    preprocess_file = 'developped_models/preprocess_input_mobilevnet2.pkl'
 
     # Local file paths to save the downloaded files
     local_model_path = 'local_model_front_back.h5'
