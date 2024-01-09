@@ -6,6 +6,11 @@ from io import BytesIO
 import tensorflow as tf
 from functions.loading_models import load_API_models, get_model_input_size
 import gc
+import logging
+
+# Set up logging configuration
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -39,6 +44,7 @@ def process_image(image_content):
     # Predict on the image
 
     result_prediction = str(argmax(predict_on_image(image_content)))
+
     gc.collect()
     
     # Return a dictionary or any other data you want
@@ -52,6 +58,7 @@ def home():
 @app.post("/process-image/")
 async def process_image_endpoint(file: UploadFile = File(...)):
     try:
+        logger.info(f"Processing unique image")
         # Uploaded file as to be one of those extension
         if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
             raise ValueError("Only PNG, JPEG or JPG images are allowed.")
@@ -60,17 +67,24 @@ async def process_image_endpoint(file: UploadFile = File(...)):
         file_contents = await file.read()
 
         # Process the image
-        result = process_image(BytesIO(file_contents))
+        try:
+            result = process_image(BytesIO(file_contents))
+            
+        except Exception as e:
+            logger.warning("status: error processing image")
+            logger.warning(f"message: {str(e)}")
+            result = "None"
 
         gc.collect()
 
         return JSONResponse(content=result)
     except Exception as e:
-        return JSONResponse(content={"status": "error", "message": str(e)})
+        return JSONResponse(content={"status": "error processing single image", "message": str(e)})
     
 @app.post("/process-batch-images/")
 async def process_batch_images_endpoint(files: List[UploadFile] = File(...)):
     try:
+        logger.info(f"Processing image in batch")
         # Check if files list is empty
         if not files:
             raise ValueError("No files provided.")
@@ -85,7 +99,13 @@ async def process_batch_images_endpoint(files: List[UploadFile] = File(...)):
             file_contents = await file.read()
 
             # Process the image
-            result = process_image(BytesIO(file_contents))
+            try:
+                result = process_image(BytesIO(file_contents))
+
+            except Exception as e:
+                logger.warning("status: error processing image in batch")
+                logger.warning(f"message: {str(e)}")
+                result = "None"
 
             results.append(result)
         
@@ -94,4 +114,4 @@ async def process_batch_images_endpoint(files: List[UploadFile] = File(...)):
 
         return JSONResponse(content=results)
     except Exception as e:
-        return JSONResponse(content={"status": "error", "message": str(e)})
+        return JSONResponse(content={"status": "error during processing batch", "message": str(e)})

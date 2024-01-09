@@ -29,7 +29,10 @@ def load_preprocess(path):
     
 # Get the input shape of the model
 def get_model_input_size(model):
-    input_shape = model.layers[0].input_shape[1:3]
+    input_shape = model.layers[0].input_shape[0][1:3]
+
+    logger.info(f"Input shape of model: {input_shape}")
+    
     return input_shape
 
 # Function to load a file from S3
@@ -65,6 +68,8 @@ def load_API_models():
     # Local file paths to save the downloaded files
     local_model_path = 'local_model_front_back.h5'
     local_preprocess_path = 'local_preprocess_input.pkl'
+    local_model_path = 'model/model_classification_front_back_mobilevnet2.h5'
+    local_preprocess_path = 'model/preprocess_input_mobilevnet2.pkl'
 
     print("[INFO] Downloading files...")
 
