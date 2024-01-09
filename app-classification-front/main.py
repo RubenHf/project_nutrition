@@ -86,8 +86,9 @@ async def process_batch_images_endpoint(files: List[UploadFile] = File(...)):
 
             # Process the image
             result = process_image(BytesIO(file_contents))
-            results.append(result)
 
+            results.append(result)
+        
         # Clear memory (optional)
         gc.collect()
 

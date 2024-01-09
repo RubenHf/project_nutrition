@@ -54,7 +54,7 @@ def remove_local_file(file_path):
 def load_API_models():
     # S3 bucket from the project and files
     bucket_name = 'nutritious.app'
-    model1_file = 'developped_models/model_classification_front_back_best_weights.h5'
+    model1_file = 'developped_models/model_classification_front_back_mobilevnet2.h5'
     preprocess_file = 'developped_models/preprocess_input.pkl'
 
     # Local file paths to save the downloaded files
