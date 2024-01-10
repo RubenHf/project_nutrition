@@ -79,7 +79,9 @@ async def process_image_endpoint(file: UploadFile = File(...)):
 
         return JSONResponse(content=result)
     except Exception as e:
-        return JSONResponse(content={"status": "error processing single image", "message": str(e)})
+        logger.warning("status: error processing single image")
+        logger.warning(f"message: {str(e)}")
+        return  "None"
     
 @app.post("/process-batch-images/")
 async def process_batch_images_endpoint(files: List[UploadFile] = File(...)):
@@ -114,4 +116,6 @@ async def process_batch_images_endpoint(files: List[UploadFile] = File(...)):
 
         return JSONResponse(content=results)
     except Exception as e:
-        return JSONResponse(content={"status": "error during processing batch", "message": str(e)})
+        logger.warning("status: error during processing batch")
+        logger.warning(f"message: {str(e)}")
+        return  ["None"] * len(files)
