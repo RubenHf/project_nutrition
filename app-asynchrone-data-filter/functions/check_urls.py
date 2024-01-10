@@ -66,13 +66,15 @@ def testing_urls_data(df, checked_images, failed_img):
     total_rows = df.shape[0]
 
     for image in ["image_1", "image_2", "image_3", "image_4"]:
-        logger.info(f"Processing: {image}")
+        print(f"Processing: {total_rows} {image}")
         
         for idx in range(0, total_rows, 100):
+            if (idx % 1000 == 0) & (idx != 0):
+                print(f"{idx} urls processed")
             # To show the progression every 1%
             if (idx + 1) % (total_rows // 100) == 0:
                 progress_percentage = ((idx + 1) / total_rows) * 100
-                logger.info(f"Progression: {progress_percentage:.2f}%")
+                print(f"Progression: {progress_percentage:.2f}%")
             try:
                 testing_img(df[idx:idx+100][image], checked_images, failed_img)
             except:
