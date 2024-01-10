@@ -69,8 +69,7 @@ def testing_urls_data(df, checked_images, failed_img):
         print(f"Processing: {total_rows} {image}")
         
         for idx in range(0, total_rows, 100):
-            if (idx % 1000 == 0) & (idx != 0):
-                print(f"{idx} urls processed")
+            print(f"{idx} urls processed")
             # To show the progression every 1%
             if (idx + 1) % (total_rows // 100) == 0:
                 progress_percentage = ((idx + 1) / total_rows) * 100
