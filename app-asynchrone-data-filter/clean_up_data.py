@@ -11,16 +11,18 @@ files_treating_step_1 = {'data_file_S3' : 'files/cleaned_data_test.csv',#'files/
 files_treating_step_2 = {'data_file_S3' : 'files/cleaned_data_post_urls.csv', 
                   'data_file_S3_post_clean_up' :'files/cleaned_data_post_images.csv'}
 
-logger.info("[LAUNCHED URLS TREATMENT OF FILE: cleaned_data.csv]")
+logger.info("[LAUNCHED URLS TREATMENT OF FILE]")
+logger.info("[cleaned_data.csv]")
 
-response = app.post("/process-data-urls/", data=files_treating_step_1)
+response = app.post("/process-data-urls/", files_treating_step_1)
 
 logger.info("[FINISHED TREATMENT...]")
 logger.info("[FILED GENERATED: cleaned_data_post_urls.csv]\n\n")
 
-logger.info("[LAUNCHED IMAGES TREATMENT OF FILE: cleaned_data_post_urls.csv]")
+logger.info("[LAUNCHED IMAGES TREATMENT OF FILE]")
+logger.info("[cleaned_data_post_urls.csv]")
 
-response = app.post("/process-data-image/", data=files_treating_step_2)
+response = app.post("/process-data-image/", files_treating_step_2)
 
 logger.info("[FINISHED TREATMENT...]")
 logger.info("[FILED GENERATED: cleaned_data_post_images.csv]\n\n")
