@@ -1,5 +1,8 @@
 import boto3
 import logging
+import io
+import pandas as pd
+import pickle
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO)
@@ -31,3 +34,27 @@ def upload_file_to_s3(local_file_path, bucket_name, object_key):
 
     except Exception as e:
         logger.error(f"Error uploading file '{object_key}': {str(e)}")
+
+# Function to load a csv from s3 
+def load_csv_from_s3(bucket_name, object_key, sep=','):
+    s3 = boto3.client('s3')
+
+    try:
+        response = s3.get_object(Bucket=bucket_name, Key=object_key)
+        return pd.read_csv(io.BytesIO(response['Body'].read()), sep=sep)
+    
+    except Exception as e:
+        logger.error(f"Error uploading csv file '{object_key}': {str(e)}")
+        return None
+
+# Function to load a pickle from s3
+def load_pickle_from_s3(bucket_name, object_key):
+    s3 = boto3.client('s3')
+
+    try:
+        response = s3.get_object(Bucket=bucket_name, Key=object_key)
+        return pickle.loads(response['Body'].read())
+    
+    except Exception as e:
+        logger.error(f"Error uploading csv file '{object_key}': {str(e)}")
+        return None

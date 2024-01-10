@@ -6,6 +6,31 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)  
 
+def get_image(code, number = 1):
+    # Transform the code to produce the Open Food Facts image URL
+    # number = the image we choose to retrieve
+    if len(code) <= 8:
+        url = f'https://images.openfoodfacts.org/images/products/{code}/{number}.jpg'
+        return url
+    elif len(code) > 8:
+        code = "0"*(13 - len(code)) + code
+        url = f'https://images.openfoodfacts.org/images/products/{code[:3]}/{code[3:6]}/{code[6:9]}/{code[9:]}/{number}.jpg'
+        return url
+    else:
+        return None
+
+def generate_urls(df):
+    """
+    Generate urls for the products (image 1 to 4 at 400  pxl)
+    Return the modified df
+    """
+
+    for i in range(1, 5):
+        df[f"image_{i}"] = df.apply(lambda x: get_image(str(x["code"]), number = f"{i}.400"), axis = 1)
+
+    return df
+
+
 def check_url_image(url):
     """
     Check if the link of the image is correct
