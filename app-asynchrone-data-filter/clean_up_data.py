@@ -7,7 +7,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)  
 
 # Read environment variable from Heroku config vars
-url_api = os.environ.get('url_api')
+url_api = os.environ.get('URL_API')
+
+if url_api is None:
+    raise EnvironmentError("The 'url_api' environment variable is not set.")
 
 files_treating_step_1 = {'data_file_S3' : 'files/cleaned_data_test.csv',#'files/cleaned_data.csv', 
                   'data_file_S3_post_clean_up' :'files/cleaned_data_post_urls.csv'}
