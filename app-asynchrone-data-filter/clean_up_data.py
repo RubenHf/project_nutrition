@@ -19,7 +19,7 @@ form_data_2 = FormData(files=files_treating_step_2)
 logger.info("[LAUNCHED URLS TREATMENT OF FILE]")
 logger.info("[cleaned_data.csv]")
 
-response = app.post("/process-data-urls/", data=form_data_1)
+response = app.post("/process-data-urls/", files=form_data_1)
 
 logger.info("[FINISHED TREATMENT...]")
 logger.info("[FILED GENERATED: cleaned_data_post_urls.csv]\n\n")
@@ -27,7 +27,7 @@ logger.info("[FILED GENERATED: cleaned_data_post_urls.csv]\n\n")
 logger.info("[LAUNCHED IMAGES TREATMENT OF FILE]")
 logger.info("[cleaned_data_post_urls.csv]")
 
-response = app.post("/process-data-image/", data=form_data_2)
+response = app.post("/process-data-image/", files=form_data_2)
 
 logger.info("[FINISHED TREATMENT...]")
 logger.info("[FILED GENERATED: cleaned_data_post_images.csv]\n\n")
