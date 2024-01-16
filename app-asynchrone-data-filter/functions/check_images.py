@@ -108,6 +108,7 @@ def check_type_data_image(df, back_images, type_image):
         # Split the contents into batches
         if batch_size < len(urls_image):
             for i in tqdm.tqdm(range(0, len(urls_image), chunk_size), desc=f"Processing {type_image} in chunks"):
+                print(i)
 
                 chunk_url_images = urls_image[i:i + chunk_size] if i + chunk_size < len(urls_image) + 1 else urls_image[i:]
 
