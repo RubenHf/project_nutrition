@@ -3,7 +3,6 @@ import logging
 import tqdm
 import concurrent.futures
 import os
-import sys
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO)
@@ -15,7 +14,6 @@ url_api = os.environ.get('URL_API')
 if url_api is None:
     raise EnvironmentError("The 'url_api' environment variable is not set.")
 
-url_api = "https://fast-api-front-b67e45f96a16.herokuapp.com"
 # Request retrieving content of url
 def retrieve_url_content(url):    
     if not str(url).startswith("http"):
@@ -100,8 +98,12 @@ def check_type_data_image(df, back_images, type_image):
 
         # Split the contents into batches
         if batch_size < len(urls_image):
-            for i in tqdm.tqdm(range(0, len(urls_image), chunk_size), 
-                               desc=f"Processing {type_image} in chunks", file=sys.stdout):
+            for i in range(0, len(urls_image), chunk_size):
+                
+                # To show the progression every 10 
+                if (i) % (10*chunk_size) == 0:
+                    progress_percentage = ((i + 1) / len(urls_image)) * 100
+                    print(f"Progression: {progress_percentage:.2f}%")
 
                 chunk_url_images = urls_image[i:i + chunk_size] if i + chunk_size < len(urls_image) + 1 else urls_image[i:]
 
@@ -116,10 +118,7 @@ def check_type_data_image(df, back_images, type_image):
 
                 #the content_batches to the API, that will return the result into the list
                 with concurrent.futures.ProcessPoolExecutor(max_workers=num_concurrent_workers) as executor:
-                    results_images.extend(tqdm.tqdm(executor.map(model_front_classification_batch, content_batches), 
-                                               total=len(content_batches),
-                                               desc=f"Processing contents for {type_image}",
-                                               file=sys.stdout))
+                    results_images.extend(executor.map(model_front_classification_batch, content_batches))
 
             # At the end, we flatten the list
             results_images = [num for sublist in results_images for num in sublist]

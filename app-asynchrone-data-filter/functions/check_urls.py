@@ -1,8 +1,6 @@
 import requests
 import concurrent.futures
 import logging
-import os
-import asyncio
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO)
