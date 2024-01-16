@@ -1,4 +1,4 @@
-@app.callback(
+"""@app.callback(
     Output('images_title', 'children'),
     *[Output(f'{diet}_div', 'children') for diet in diets],
     *[Output(f'{diet}_img_{i}', 'src') for diet in diets for i in range(20)],
@@ -333,3 +333,4 @@ def clicked_diet_navigation(translation, df, diets, n_best, subtitles, images, s
     prevent_update = None
 
     return subtitles, images, styles_images, textes_images, prevent_update, search_on, history_nav, style_bottom_graph_button
+"""

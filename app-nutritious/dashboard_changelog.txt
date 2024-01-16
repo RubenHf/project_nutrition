@@ -1,3 +1,6 @@
+Version 0.7.2
+- Used of dataset that is cleaned of products without images 
+- Images verifications have been done outside the app, the app focus now only on displaying
 Version 0.7.0
 Addition of 2 images models that will classifiy an image into the pnns_groups_1 or 2
 Version 0.6.5

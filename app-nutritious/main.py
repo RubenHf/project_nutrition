@@ -1,17 +1,18 @@
 ﻿import dash
-from dash import Dash, html, dcc, Output, Input, State, ctx, Patch
+from dash import Dash, html, Output, Input, State, ctx, Patch
 from dash.exceptions import PreventUpdate
 import pandas as pd
 import requests
 import math
+import numpy as np
 from io import StringIO
 import time
 from collections import Counter 
 
 # Importing the functions
 from functions.dash_figures import create_figure_products, patch_graphic, figure_result_model
-from functions.data_handling import pnns_groups_options, return_df, get_image, get_code, df_sorting, get_nutriscore_image
-from functions.data_handling import generate_texte_image, get_texte_product, testing_img, get_data
+from functions.data_handling import pnns_groups_options, return_df, get_code, df_sorting, get_nutriscore_image
+from functions.data_handling import generate_texte_image, get_texte_product, get_data
 from functions.display_images import *
 from functions.language import get_languages_options
 from frontend.navigation_panel import generating_navigating_panel
@@ -32,7 +33,7 @@ server = app.server
 
 app.title = 'Nutritious app'
 
-versionning = "0.7.1"
+versionning = "0.7.2"
 
 DEBUG = True
 
@@ -649,13 +650,11 @@ def display_images(*args):
                         # generate the texte below the image
                         textes_images[index] = get_texte_product(row, language)
                         
-                        # We retrieve the image url via the code
-                        images[index] = get_image(str(row.iloc[0]))
+                        # We retrieve the images_1 urls 
+                        images[index] = row["image_1"]
                         
-                    # Checking each images
-                    images = testing_img(images)
-                    # Replace images
-                    images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
+                    # Replace images by default if something failed in retrieving url
+                    images = [dash.get_asset_url('no_image.jpg') if url is np.nan else url for url in images]
                     
                     style_bottom_graph_button = {'display':'block', 'color': 'black'}
         
@@ -665,10 +664,9 @@ def display_images(*args):
                                                                                subtitles, images, 
                                                                                styles_images, textes_images,
                                                                                language)
-                    # Checking each images
-                    images = testing_img(images)
-                    # Replace images
-                    images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
+
+                    # Replace images by default if something failed in retrieving url
+                    images = [dash.get_asset_url('no_image.jpg') if url is np.nan else url for url in images]
 
         prevent_update = None
         
@@ -682,10 +680,8 @@ def display_images(*args):
                                                                                styles_images, textes_images,
                                                                                language)
         
-        # Checking each images
-        images = testing_img(images)
-        # Replace images
-        images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
+        # Replace images by default if something failed in retrieving url
+        images = [dash.get_asset_url('no_image.jpg') if url is np.nan else url for url in images]
         
         prevent_update = pnns2_chosen if ctx.triggered_id == "pnns2_chosen" else None
                                 
@@ -720,10 +716,17 @@ def display_images(*args):
                 url = shown_img_data[ctx.triggered_id]
                 code = get_code(url)
 
-            df_product = get_data().query('code == @code')
+            # Some of the codes are writen in int type
+            df_product = get_data().astype({'code': str}).query('code == @code')
 
-            # For now it helps to deal with the 0 problem.
+            # If failed, we search for in int
             if df_product.shape[0] == 0:
+                code_int = int(code)
+                df_product = get_data().query('code == @code_int')
+
+            # And another solution it helps to deal with the 0 problem.
+            if df_product.shape[0] == 0:
+                print("Failed to load")
                 code = "0"*(13 - len(code)) + code
                 df_product = get_data().query('code == @code')
 
@@ -731,18 +734,16 @@ def display_images(*args):
             product_name = df_product['product_name'].values[0]
 
             # Principale image
-            selected_product_img = get_image(code)
+            selected_product_img = df_product['image_1'].values[0]
 
             # Secondaries images
-            # Return the link of the image, then check it's validity
+            # Return the link of the images
             
-            others_img = [get_image(code, i) for i in range(1, 5)]
-            others_img = testing_img(others_img)
-            
+            others_img = [df_product[img].values[0] for img in [f"image_{i}" for i in range(1,5,1)]]
 
             # Display image if link correct
             others_img_style = [{'height': '150px', 'width': '150px'}
-                               if others_img[i] != None else no_display
+                               if "http" in str(others_img[i]) else no_display
                                for i in range(0, 4)]
 
             selected_product_title = html.Strong(product_name)
@@ -773,15 +774,15 @@ def display_images(*args):
                                                                                        subtitles, images, 
                                                                                        styles_images, textes_images,
                                                                                        language)
-                # Checking each images
-                images = testing_img(images)
-                # Replace images
-                images = [dash.get_asset_url('no_image.jpg') if url is None else url for url in images]
+                # Replace images by default if something failed in retrieving url
+                images = [dash.get_asset_url('no_image.jpg') if url is np.nan else url for url in images]
                 
                 prevent_update = pnns2
                 pnns1_chosen, pnns2_chosen = pnns1, pnns2
             
-        except:
+        except Exception as e:
+            print(f"Error: {str(e)}")
+        
             selected_product_img = dash.get_asset_url("no_image.jpg")
             selected_product_title = html.Strong(translations[language]['product_not_found'])
             selected_product_texte = html.Strong(translations[language]['product_not_available'])

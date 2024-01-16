@@ -133,90 +133,7 @@ def return_df(country, pnns1 = None, pnns2 = None):
 
     # Returning no data to show
     else:
-        return None
-
-def get_image(code, number = 1):
-    # Transform the code to produce the Open Food Facts image URL
-    # number = the image we choose to retrieve
-    if len(code) <= 8:
-        url = f'https://images.openfoodfacts.org/images/products/{code}/{number}.jpg'
-        return url
-    elif len(code) > 8:
-        code = "0"*(13 - len(code)) + code
-        url = f'https://images.openfoodfacts.org/images/products/{code[:3]}/{code[3:6]}/{code[6:9]}/{code[9:]}/{number}.jpg'
-        return url
-    else:
-        return None
-
-def check_url_image(url):
-    """
-    Check if the link of the image is correct
-    Return none if not
-    """
-    
-    try:
-        response = requests.head(url) # We use head instead of get, we only need to check the link
-        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
-        return url
-    except requests.exceptions.RequestException:
-        return None
-
-def check_image_urls_parallel(urls):
-    """
-    The check_image_urls_parallel function uses concurrent.futures.ThreadPoolExecutor 
-    to perform the checks concurrently.
-    """
-    
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        #The map function is used to apply the check_url function to each URL in parallel.
-        results = executor.map(check_url_image, urls) # return a generator
-        
-    #The check_url_image function puts the results appropriate queue (checked_queue or failed_queue)
-    for result in results:
-        if result is not None:
-            checked_queue.put(result)
-        else:
-            failed_queue.put(result)   
-        
-# Store globally informations on the url images.
-# If one user check one image, it will be beneficial to all
-# failed_img contains the url that failed.
-checked_images = set()
-failed_img = set()
-
-# We set a queue for allowing a multi user environment 
-checked_queue = queue.Queue()
-failed_queue = queue.Queue()
-
-def testing_img(images):
-    to_test = []
-
-    for i, url in enumerate(images):
-        if url in checked_images:
-            if url in failed_img:
-                images[i] = None
-        else: 
-            if url is not None and 'http' in str(url): 
-                checked_images.add(url)
-                to_test.append(url)
-
-    check_image_urls_parallel(to_test)
-    
-    # The queue helps us handle a multi users environement
-    while not checked_queue.empty():
-        url = checked_queue.get()
-        checked_images.add(url)
-
-    while not failed_queue.empty():
-        url = failed_queue.get()
-        failed_img.add(url)
-
-    for i, url in enumerate(images):
-        if url in failed_img:
-            images[i] = None
-      
-    return images
-        
+        return None        
         
 def get_code(url):
     # Extract the product code from the Open Food Facts image URL
@@ -328,26 +245,18 @@ def generate_texte_image(df, diets, n_best, subtitles, images, styles_images, te
 
         for y, (_, IMG) in enumerate(df_N_best.iterrows()):
             index = y if i == 0 else (20 * i) + y
-            code = IMG.iloc[0]
-            product_name = IMG.iloc[1]
             
-            # We retrieve the image url via the code
-            images[index] = get_image(str(code))
+            images[index] = IMG["image_1"]
 
             styles_images[index] = {'width': '150px', 'height': '150px'}
 
             textes_images[index] = (
                 html.Div([
-                    get_nutriscore_image(str(IMG.iloc[-1]))
+                    get_nutriscore_image(str(IMG["nutriscore_score_letter"]))
                 ] + [
-                html.Div(product_name, style={'text-align': 'center', 'margin-top': '5px'}) 
+                html.Div(IMG["product_name"], style={'text-align': 'center', 'margin-top': '5px'}) 
                 ])
             ) 
-    # Checking each images
-    #images = check_image_urls_parallel(images)
-    images = testing_img(images)
-    # Replace image 
-    images = [get_asset_url('no_image.jpg') if url is None else url for url in images]
     
     return subtitles, images, styles_images, textes_images   
 
@@ -363,7 +272,7 @@ def get_nutriscore_image(img, style={'width': '100px', 'height': '50px', 'margin
 # Return Image of nutriscore then the text below with nutrition informations
 def get_texte_product(row, language):
     return html.Div([
-        get_nutriscore_image(str(row.iloc[-1]))
+        get_nutriscore_image(str(row["nutriscore_score_letter"]))
         ] + [
         html.Div([
             # Get the dictionnary, then get the translated word. If not in, get the initial value
@@ -372,6 +281,7 @@ def get_texte_product(row, language):
             style={'text-align': 'left', 'margin-top': '1px', 'margin-left':'10px', 'white-space': 'nowrap'}
             )
         for i in range(len(row.iloc[:-1]))
+        if row.index[i] not in  [f"image_{i}" for i in range(1,5,1)] # To exclude images urls
     ], style={'display': 'flex', 'flex-direction': 'column', 'overflowX': 'scroll'})
     
 def find_key_by_value(my_dict, value):
@@ -398,7 +308,7 @@ try:
     app_dir = os.path.dirname(script_dir)
 
     # Define the path to the file in the /files directory
-    file_path = os.path.join(app_dir, 'files_dash', 'cleaned_data.csv')
+    file_path = os.path.join(app_dir, 'files_dash', 'cleaned_img_data.csv')
 
     # Now you can use the file_path to access your file
     with open(file_path, 'r') as file:
@@ -406,8 +316,9 @@ try:
 except:
     s3 = boto3.client('s3')
     # S3 bucket from the project and files
+
     bucket_name = 'nutritious.app'
-    data_file = 'files/cleaned_data.csv'
+    data_file = 'files/cleaned_img_data.csv'
 
     try:
         # Read the CSV file from S3 into a Pandas DataFrame
