@@ -79,6 +79,7 @@ async def process_urls(
 
 async def process_images(
     data_file_S3: str = Form(None),
+    data_file_S3_post_urls_clean_up : str = Form(None),
     data_file_S3_post_images_clean_up : str = Form(None)
     ):
 
@@ -90,7 +91,15 @@ async def process_images(
 
     print("[INFO] Loading file from S3...")
 
-    df = load_csv_from_s3(bucket_name, data_file_S3, sep='\t')
+    try:
+        if data_file_S3:
+            df = load_csv_from_s3(bucket_name, data_file_S3, sep='\t')
+
+        elif data_file_S3_post_urls_clean_up:
+            df = load_csv_from_s3(bucket_name, data_file_S3_post_urls_clean_up, sep='\t')
+    except Exception as e:
+        logger.info("status: error")
+        logger.info(f"message: {str(e)}")
 
     print("[INFO] Checking images...")
 
@@ -126,6 +135,7 @@ async def process_image_endpoint(
     ):
     
     background_tasks.add_task(process_urls, data_file_S3, data_file_S3_post_urls_clean_up)
+
     background_tasks.add_task(process_images, data_file_S3_post_urls_clean_up, data_file_S3_post_images_clean_up)
     
     return {"message": "Operation launched in background"}
@@ -145,9 +155,17 @@ async def process_urls_endpoint(
 async def process_image_endpoint(
     background_tasks: BackgroundTasks,
     data_file_S3: str = Form(None),
+    data_file_S3_post_urls_clean_up : str = Form(None),
     data_file_S3_post_images_clean_up : str = Form(None)
     ):
 
-    background_tasks.add_task(process_urls, data_file_S3, data_file_S3_post_images_clean_up)
+    if data_file_S3:
+        background_tasks.add_task(process_urls, data_file_S3, data_file_S3_post_images_clean_up)
+    elif data_file_S3_post_urls_clean_up:
+        background_tasks.add_task(process_urls, data_file_S3_post_urls_clean_up, data_file_S3_post_images_clean_up)
 
     return {"message": "Url processing operation launched in the background"}
+
+@app.post("/keep-alive/")
+async def keeping_alive():
+    return {"message": "I'm working"}

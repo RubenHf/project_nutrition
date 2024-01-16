@@ -2,11 +2,17 @@ import requests
 import logging
 import tqdm
 import concurrent.futures
-
+import os
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)  
+
+# Read environment variable from Heroku config vars
+#url_api = os.environ.get('URL_API')
+url_api = "https://fast-api-front-b67e45f96a16.herokuapp.com/"
+if url_api is None:
+    raise EnvironmentError("The 'url_api' environment variable is not set.")
 
 # Request retrieving content of url
 def retrieve_url(url):    
