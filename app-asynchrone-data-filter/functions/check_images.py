@@ -3,6 +3,7 @@ import logging
 import tqdm
 import concurrent.futures
 import os
+import sys
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO)
@@ -14,6 +15,7 @@ url_api = os.environ.get('URL_API')
 if url_api is None:
     raise EnvironmentError("The 'url_api' environment variable is not set.")
 
+url_api = "https://fast-api-front-b67e45f96a16.herokuapp.com"
 # Request retrieving content of url
 def retrieve_url_content(url):    
     if not str(url).startswith("http"):
@@ -85,9 +87,9 @@ def check_type_data_image(df, back_images, type_image):
 
     if len(back_images) > 0:
         num_concurrent_requests = 20 # Number of concurrent requests   
-        num_concurrent_workers = 10 # Number of concurrent workers 
+        num_concurrent_workers = 5 # Number of concurrent workers 
         batch_size = 12 # Number of images sent by batch 
-        chunk_size = 50 # Size to send batch   
+        chunk_size = 48 # Size to send batch   
 
         initial_df = df[df.index.isin(back_images)]
 
@@ -96,19 +98,10 @@ def check_type_data_image(df, back_images, type_image):
 
         results_images = []
 
-        # First, we retrieve the contents of the images
-        #with concurrent.futures.ThreadPoolExecutor(max_workers=num_concurrent_requests) as executor:
-         #   contents = list(tqdm.tqdm(executor.map(retrieve_url, urls_image), total=len(urls_image),
-          #                             desc=f"Retrieving contents for {type_image}"))
-
-        # We clean that up
-        #if len(contents) > 1:
-         #   contents = [content.content if content is not None else "None" for content in contents]
-        print(len(urls_image))
         # Split the contents into batches
         if batch_size < len(urls_image):
-            for i in tqdm.tqdm(range(0, len(urls_image), chunk_size), desc=f"Processing {type_image} in chunks"):
-                print(i)
+            for i in tqdm.tqdm(range(0, len(urls_image), chunk_size), 
+                               desc=f"Processing {type_image} in chunks", file=sys.stdout):
 
                 chunk_url_images = urls_image[i:i + chunk_size] if i + chunk_size < len(urls_image) + 1 else urls_image[i:]
 
@@ -119,15 +112,14 @@ def check_type_data_image(df, back_images, type_image):
                     if len(contents) > 1:
                         contents = [content.content if content is not None else "None" for content in contents]
 
-                #current_chunk = contents[i:i + chunk_size] if i + chunk_size < len(contents) + 1 else contents[i:]
-
                 content_batches = [contents[idx:idx+batch_size] for idx in range(0, len(contents), batch_size)] if len(contents) > batch_size else [contents]
 
                 #the content_batches to the API, that will return the result into the list
                 with concurrent.futures.ProcessPoolExecutor(max_workers=num_concurrent_workers) as executor:
                     results_images.extend(tqdm.tqdm(executor.map(model_front_classification_batch, content_batches), 
                                                total=len(content_batches),
-                                               desc=f"Processing contents for {type_image}"))
+                                               desc=f"Processing contents for {type_image}",
+                                               file=sys.stdout))
 
             # At the end, we flatten the list
             results_images = [num for sublist in results_images for num in sublist]

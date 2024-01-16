@@ -8,12 +8,6 @@ import asyncio
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__) 
 
-# Read environment variable from Heroku config vars
-url_api = os.environ.get('URL_API')
-
-if url_api is None:
-    raise EnvironmentError("The 'url_api' environment variable is not set.")
-
 def get_image(code, number = 1):
     # Transform the code to produce the Open Food Facts image URL
     # number = the image we choose to retrieve
