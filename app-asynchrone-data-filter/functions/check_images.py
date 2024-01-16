@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)  
 
 # Read environment variable from Heroku config vars
-#url_api = os.environ.get('URL_API')
-url_api = "https://fast-api-front-b67e45f96a16.herokuapp.com/"
+url_api = os.environ.get('URL_API')
+
 if url_api is None:
     raise EnvironmentError("The 'url_api' environment variable is not set.")
 
@@ -36,13 +36,10 @@ def model_front_classification(content):
     
     # Files will content the information on the image
     files = {"file": ('temp_image.jpg', content, 'image/jpg')}
-
-    # Link for processing single image
-    url_api = "https://fast-api-front-b67e45f96a16.herokuapp.com/process-image/"
     
     try:
         # We send images to the API
-        response = requests.post(url_api, files=files)
+        response = requests.post(url_api + "/process-image/", files=files)
     except Exception as e:
         logger.info("status: error")
         logger.info(f"message: {str(e)}")
@@ -63,13 +60,10 @@ def model_front_classification_batch(contents):
 
     # List of files to send to API
     files = [("files", ('temp_image.jpg', content, 'image/jpg')) for content in contents]
-
-    # Link for processing images in batch
-    url_api = "https://fast-api-front-b67e45f96a16.herokuapp.com/process-batch-images/"
     
     try:
         # We send images to the API
-        response = requests.post(url_api, files=files)
+        response = requests.post(url_api + "/process-batch-images/", files=files)
     except Exception as e:
         logger.info("status: error")
         logger.info(f"message: {str(e)}")
