@@ -87,7 +87,7 @@ def check_type_data_image(df, back_images, type_image):
         num_concurrent_requests = 20 # Number of concurrent requests   
         num_concurrent_workers = 10 # Number of concurrent workers 
         batch_size = 12 # Number of images sent by batch 
-        chunk_size = 48 # Size to send batch   
+        chunk_size = 50 # Size to send batch   
 
         initial_df = df[df.index.isin(back_images)]
 
