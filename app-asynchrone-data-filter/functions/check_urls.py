@@ -10,12 +10,9 @@ logger = logging.getLogger(__name__)
 
 # Read environment variable from Heroku config vars
 url_api = os.environ.get('URL_API')
-url_local = os.environ.get('URL_LOCAL')
 
 if url_api is None:
     raise EnvironmentError("The 'url_api' environment variable is not set.")
-if url_local is None:
-    raise EnvironmentError("The 'url_local' environment variable is not set.")
 
 def get_image(code, number = 1):
     # Transform the code to produce the Open Food Facts image URL
@@ -82,15 +79,6 @@ def testing_urls_data(df, checked_images, failed_img):
         for idx in range(0, total_rows, 100):
             print(f"{idx} urls processed")
             # To show the progression every 1%
-
-            if idx % 400 == 0:
-                # We ping the server every x step to keep it alive with a request
-                try:
-                    response = requests.post(url_local + "/keep-alive/")
-                    print(f'Keep-alive request sent. Status code: {response.status_code}')
-
-                except Exception as e:
-                    print(f'Error during keep-alive request: {e}')
 
             if (idx + 1) % (total_rows // 100) == 0:
                 progress_percentage = ((idx + 1) / total_rows) * 100
