@@ -26,7 +26,7 @@ If you are interested in contributing to the project, please feel free to contac
 
 ## License
 
-This project currently does not have a specific license.
+This project is licensed under the [GNU General Public License v3.0](LICENSE) - see the [LICENSE] file for details.
 
 ## Acknowledgments
 
