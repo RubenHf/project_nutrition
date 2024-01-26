@@ -114,4 +114,5 @@ async def process_image_endpoint(
         return JSONResponse(content=result)
 
     except Exception as e:
+        print("error")
         return JSONResponse(content={"status": "error", "message": str(e)})
