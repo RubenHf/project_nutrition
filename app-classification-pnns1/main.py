@@ -117,9 +117,9 @@ async def process_image_endpoint(
         logger.info(f"The prediction is done on {pnns_groups}")
         
         if pnns_groups == "pnns_groups_1":
-            result = img_prediction_model_pnns(loaded_model_pnns1, pnns_groups, BytesIO(file_contents), loaded_preprocess_input)
+            result = img_prediction_model_pnns(loaded_model_pnns1, pnns_groups, BytesIO(file_contents))
         elif pnns_groups == "pnns_groups_2":
-            result = img_prediction_model_pnns(loaded_model_pnns2, pnns_groups, BytesIO(file_contents), loaded_preprocess_input)
+            result = img_prediction_model_pnns(loaded_model_pnns2, pnns_groups, BytesIO(file_contents))
         
         gc.collect()
         
