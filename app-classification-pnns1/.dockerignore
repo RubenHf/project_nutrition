@@ -1,0 +1,6 @@
+models/
+.pyc
+__pycache__/
+runtime.txt
+.slugignore
+Procfile
