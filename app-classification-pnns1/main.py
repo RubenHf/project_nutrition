@@ -5,8 +5,13 @@ import base64
 import tensorflow as tf
 from functions.loading_models import load_API_models
 import gc
+import logging
 
 app = FastAPI()
+
+# Set up logging configuration
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)  
 
 # We load the models and the preprocess
 loaded_model_pnns1, loaded_model_pnns2, loaded_preprocess_input = load_API_models()
@@ -16,7 +21,6 @@ def load_and_preprocess_image(image_path):
     with tf.keras.preprocessing.image.load_img(image_path, target_size=(299, 299)) as img:
         img_array = tf.keras.preprocessing.image.img_to_array(img)
         img_array = tf.expand_dims(img_array, 0)  # Create batch dimension
-        
 
         gc.collect()
         # We use the loaded preprocess
@@ -80,10 +84,14 @@ async def process_image_endpoint(
     file: UploadFile = File(None), 
     base64_image: str = Form(None), 
     pnns_groups: str = Form(None)):
+        
+    logger.info("API was called...")
 
     try:
         if file:
         # If file image is provided, decode it
+            
+            logger.info("A file was uploaded")
 
             # Uploaded file as to be one of those extension
             if file.content_type not in ["image/png", "image/jpeg", "image/jpg"]:
@@ -95,6 +103,8 @@ async def process_image_endpoint(
 
         elif base64_image:
         # If base64 image is provided, we decode it
+            
+            logger.info("A base64 image was uploaded")
 
             data_split = base64_image.split('base64,')
             
@@ -102,17 +112,25 @@ async def process_image_endpoint(
             
             file_contents = base64.b64decode(encoded_data)
 
-        # We do the prediction
+        # We do the prediction on 
+            
+        logger.info(f"The prediction is done on {pnns_groups}")
+        
         if pnns_groups == "pnns_groups_1":
             result = img_prediction_model_pnns(loaded_model_pnns1, pnns_groups, BytesIO(file_contents), loaded_preprocess_input)
         elif pnns_groups == "pnns_groups_2":
             result = img_prediction_model_pnns(loaded_model_pnns2, pnns_groups, BytesIO(file_contents), loaded_preprocess_input)
         
         gc.collect()
-        print(result)
+        
+        logger.info("...successful prediction")
+
         #df_result = df_result.to_dict(orient='records')
         return JSONResponse(content=result)
 
     except Exception as e:
-        print("error")
+        
+        logger.info("status: error")
+        logger.info(f"message: {str(e)}")
+
         return JSONResponse(content={"status": "error", "message": str(e)})
