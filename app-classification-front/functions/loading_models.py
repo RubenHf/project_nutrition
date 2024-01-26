@@ -9,6 +9,12 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Read environment variable from Heroku config vars
+bucket_name = os.environ.get('S3_BUCKET_NAME')
+
+if bucket_name is None:
+    raise EnvironmentError("The 'S3_BUCKET_NAME' environment variable is not set.")
+
 
 # Load the model from the path
 def load_model(url):
@@ -60,8 +66,7 @@ def remove_local_file(file_path):
         logger.error(f"Error removing file '{file_path}': {str(e)}")
 
 def load_API_models():
-    # S3 bucket from the project and files
-    bucket_name = 'nutritious.app'
+    # We load the files from the S3 bucket
     model1_file = 'developped_models/model_classification_front_back_mobilevnet2.h5'
     preprocess_file = 'developped_models/preprocess_input_mobilevnet2.pkl'
 

@@ -4,6 +4,12 @@ import os
 import boto3
 import gc
 
+# Read environment variable from Heroku config vars
+bucket_name = os.environ.get('S3_BUCKET_NAME')
+
+if bucket_name is None:
+    raise EnvironmentError("The 'S3_BUCKET_NAME' environment variable is not set.")
+
 # Load the model from the path
 def load_model(path):
     if os.path.exists(path):
@@ -44,7 +50,6 @@ def remove_local_file(file_path):
 
 def load_API_models():
     # S3 bucket from the project and files
-    bucket_name = 'nutritious.app'
     model1_file = 'developped_models/model_classification_pnns1_best_weights.h5'
     model2_file = 'developped_models/model_classification_pnns2_best_weights.h5'
     preprocess_file = 'developped_models/preprocess_input.pkl'

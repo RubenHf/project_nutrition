@@ -6,6 +6,12 @@ import boto3
 from dash import html, get_asset_url
 from functions.language import get_translate
 
+# Read environment variable from Heroku config vars
+bucket_name = os.environ.get('S3_BUCKET_NAME')
+
+if bucket_name is None:
+    raise EnvironmentError("The 'S3_BUCKET_NAME' environment variable is not set.")
+
 # We retrieve the language dictionnary
 translations = get_translate()
 
@@ -312,9 +318,8 @@ try:
         data = pd.read_csv(file_path, sep = "\t")
 except:
     s3 = boto3.client('s3')
-    # S3 bucket from the project and files
 
-    bucket_name = 'nutritious.app'
+    # Path to the cleaned file
     data_file = 'files/cleaned_img_data.csv'
 
     try:

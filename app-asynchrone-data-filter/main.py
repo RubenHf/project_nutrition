@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Form, BackgroundTasks
 import pandas as pd
+import os
 import gc
 import logging
 from functions.check_images import check_data_image
@@ -7,12 +8,17 @@ from functions.check_urls import testing_urls_data, generate_urls
 from functions.path_functions import remove_local_file, create_pickle_file
 from functions.s3_functions import upload_file_to_s3, load_csv_from_s3, load_pickle_from_s3
 
-
 app = FastAPI()
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)  
+
+# Read environment variable from Heroku config vars
+bucket_name = os.environ.get('S3_BUCKET_NAME')
+
+if bucket_name is None:
+    raise EnvironmentError("The 'S3_BUCKET_NAME' environment variable is not set.")
 
 @app.get("/")
 def home():
@@ -24,7 +30,6 @@ async def process_urls(
     data_file_S3_post_urls_clean_up : str = Form(None)):
 
     # S3 bucket from the project and files
-    bucket_name = 'nutritious.app'
     checked_images_S3 = 'files/checked_images.pkl'
     failed_images_S3 = 'files/failed_images.pkl'
 
