@@ -10,8 +10,12 @@ COPY ./requirements.txt /code/requirements.txt
 # We install the dependancies
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-# We copy the current dir 
+# Copy the source code into the container 
 COPY . /code
 
-# 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Expose the port that the application listens on.
+
+EXPOSE 8000
+
+# Run the application
+CMD uvicorn main:app --reload --port 8000 --host 0.0.0.0
