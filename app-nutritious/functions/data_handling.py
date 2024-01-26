@@ -4,9 +4,6 @@ import os
 from io import StringIO
 import boto3
 from dash import html, get_asset_url
-import requests
-import concurrent.futures
-import queue
 from functions.language import get_translate
 
 # We retrieve the language dictionnary
