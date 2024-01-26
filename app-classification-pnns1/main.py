@@ -109,7 +109,7 @@ async def process_image_endpoint(
             result = img_prediction_model_pnns(loaded_model_pnns2, pnns_groups, BytesIO(file_contents), loaded_preprocess_input)
         
         gc.collect()
-
+        print(result)
         #df_result = df_result.to_dict(orient='records')
         return JSONResponse(content=result)
 
