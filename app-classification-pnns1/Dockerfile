@@ -1,5 +1,6 @@
 # Start from the official Python base image.
-FROM python:3.11.4
+#FROM python:3.11.4
+FROM tiangolo/uvicorn-gunicorn:python3.11
 
 # We create our working space
 WORKDIR /code
@@ -13,9 +14,7 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 # Copy the source code into the container 
 COPY . /code
 
-# Expose the port that the application listens on.
-
-EXPOSE 8000
-
 # Run the application
-CMD uvicorn main:app --reload --port 8000 --host 0.0.0.0
+#CMD uvicorn main:app --reload --port 8000 --host 0.0.0.0
+CMD gunicorn -w 1 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT
+
