@@ -125,7 +125,6 @@ async def process_image_endpoint(
         
         logger.info("...successful prediction")
 
-        #df_result = df_result.to_dict(orient='records')
         return JSONResponse(content=result)
 
     except Exception as e:
