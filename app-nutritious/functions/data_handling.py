@@ -3,8 +3,13 @@ import copy
 import os
 from io import StringIO
 import boto3
+import logging
 from dash import html, get_asset_url
 from functions.language import get_translate
+
+# Set up logging configuration
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)  
 
 # Read environment variable from Heroku config vars
 bucket_name = os.environ.get('S3_BUCKET_NAME')
@@ -304,14 +309,19 @@ def find_key_by_value(my_dict, value):
 # When debugging, it will load the file in local
 # On server, it will load from S3
 try:
+    logger.info("Loading file from local folder...")
     # Get the directory of the script
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Go up one level to the parent directory (assuming the script is in the 'app' directory)
     app_dir = os.path.dirname(script_dir)
 
-    # Define the path to the file in the /files directory
-    file_path = os.path.join(app_dir, 'files_dash', 'cleaned_img_data.csv')
+    try:
+        # Define the path to the file in the /files directory
+        file_path = os.path.join(app_dir, 'files_dash', 'cleaned_img_data.csv')
+    except:
+        logger.info("status: Error")
+        logger.info(f"message: {str(e)}")
 
     # Now you can use the file_path to access your file
     with open(file_path, 'r') as file:
@@ -323,13 +333,15 @@ except:
     data_file = 'files/cleaned_img_data.csv'
 
     try:
+        logger.info("Loading file from S3 bucket...")
         # Read the CSV file from S3 into a Pandas DataFrame
         response = s3.get_object(Bucket=bucket_name, Key=data_file)
         content = response['Body'].read().decode('utf-8')
         data = pd.read_csv(StringIO(content), sep='\t')
 
     except Exception as e:
-        print(f"Error downloading file: {str(e)}")
+        logger.info("status: Error downloading file")
+        logger.info(f"message: {str(e)}")
 
 # We do the mapping of nutriscore
 data = mapping_nutriscore_IMG(data)
