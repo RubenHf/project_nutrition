@@ -25,4 +25,4 @@ COPY . /code
 
 # Run the application
 #CMD gunicorn -w 1 -k uvicorn.workers.UvicornWorker main:server --bind 0.0.0.0:$PORT
-CMD gunicorn -b 0.0.0.0:80 main:server
+CMD gunicorn -w 1 -b 0.0.0.0:$PORT main:server
