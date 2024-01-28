@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 # Read environment variable from config vars
 bucket_name = os.environ.get('S3_BUCKET_NAME')
-bucket_name = "nutritious.app"
+
 if bucket_name is None:
     raise EnvironmentError("The 'S3_BUCKET_NAME' environment variable is not set.")
 

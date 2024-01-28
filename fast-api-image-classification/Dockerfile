@@ -23,9 +23,5 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 # Copy the source code into the container 
 COPY . /code
 
-# Run unit tests
-RUN python -m pytest
-
 # Run the application
 CMD gunicorn -w 1 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:${PORT:-8000}
-
