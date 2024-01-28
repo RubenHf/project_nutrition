@@ -12,3 +12,10 @@ def get_model_input_size(model):
     logger.info(f"Input shape of model: {input_shape}")
     
     return input_shape
+
+# Alternative to numpy.argmax 
+def argmax(result):
+    if len(result) == 1: # When list is nested
+        return max(range(len(result[0])), key=result[0].__getitem__)
+    else: 
+        return max(range(len(result)), key=result.__getitem__)
