@@ -35,7 +35,21 @@ app.title = 'Nutritious app'
 
 versionning = "0.7.2"
 
-DEBUG = True
+DEBUG = False
+
+from dash import DiskcacheManager, CeleryManager
+
+if 'REDIS_URL' in os.environ:
+    # Use Redis & Celery if REDIS_URL set as an env variable
+    from celery import Celery
+    celery_app = Celery(__name__, broker=os.environ['REDIS_URL'], backend=os.environ['REDIS_URL'])
+    background_callback_manager = CeleryManager(celery_app)
+
+else:
+    # Diskcache for non-production apps when developing locally
+    import diskcache
+    cache = diskcache.Cache("./cache")
+    background_callback_manager = DiskcacheManager(cache)
 
 # Front-end of the app
 app.layout = html.Div([
@@ -47,6 +61,9 @@ app.layout = html.Div([
     
     # Function generating the dcc_store components, we return a tuple, so we need to unpack
     *generating_dcc_store(diets, initial_language),
+
+    # Dummy var
+    html.Div(id='dummy_output', style={'display': 'none'})
     
 ],id='app-container', style={'justify-content': 'space-between', 'margin': '0', 'padding': '0'})
 
@@ -1030,6 +1047,28 @@ def browsing_history(clicks, selected_rows, history_nav, country, type_search_pr
     return tuple(output_values)
 
 @app.callback(
+    Output('dummy_output', 'children'),
+    Input('picture_search_button','n_clicks'),
+    Input('upload_img_button','n_clicks'),
+    Input('clear_img_button','n_clicks'),
+    Input('search_pnns1_img','n_clicks'),
+    Input('search_pnns2_img','n_clicks'),
+    Input('upload_img_data', 'contents'),
+    Input('model_figure_result','clickData'),
+
+    background=True,
+    manager=background_callback_manager,
+    
+    prevent_initial_call=True,
+)
+
+# Will handle everything linked to the search by a picture
+def wake_up_api(*args):
+    # ping app to wake it up
+    requests.head(api_classification_url)
+    return None
+
+@app.callback(
     Output('picture_search_div', 'style', allow_duplicate=True),
     Output('advanced_search_div', 'style', allow_duplicate=True),
     Output('browser_history_div', 'style', allow_duplicate=True),
@@ -1053,13 +1092,15 @@ def browsing_history(clicks, selected_rows, history_nav, country, type_search_pr
     Input('model_figure_result','clickData'),
 
     State('language_user', 'data'),
+    background=True,
+    manager=background_callback_manager,
     
     prevent_initial_call=True,
 )
 # Will handle everything linked to the search by a picture
 def picture_search_div(*args):
     elapsed_time = time.time() if DEBUG else None
-    
+
     display_no_show = {'display':'None'}
     
     # We display the div
@@ -1109,7 +1150,7 @@ def picture_search_div(*args):
         elif ctx.triggered_id == "search_pnns2_img":
             image_contents = {"base64_image": image_contents, "pnns_groups": "pnns_groups_2"}
         
-        response = requests.post("https://fast-api-pnns1-cd370c7762e4.herokuapp.com/process-image/", data=image_contents)
+        response = requests.post(api_classification_url + "pnns-process-image/", data=image_contents)
         
         try:
             # We put the result into a dataframe

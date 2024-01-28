@@ -1,5 +1,5 @@
 # Start from the fastapi image
-FROM python:3.11-slim
+FROM tiangolo/uvicorn-gunicorn:python3.11
 
 # Prevents Python from writing pyc files.
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -24,4 +24,5 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 COPY . /code
 
 # Run the application
-CMD gunicorn -w 1 -b 0.0.0.0:8080 main:server
+CMD gunicorn -w 1 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:${PORT:-8000}
+

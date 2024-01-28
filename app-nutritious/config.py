@@ -1,6 +1,6 @@
-
 from functions.data_handling import get_data, products_by_countries,get_pnns_groups_1, get_pnns_groups_2, get_pnns_groups
 from functions.language import get_translate, get_languages_options
+import os
 
 # We set the initials config
 
@@ -35,3 +35,11 @@ pnns_groups = get_pnns_groups()
   
 # to handle increased number of diet
 TOTAL_IMAGES = len(diets) * 20
+
+# Read environment variable from config vars
+api_classification_url = os.environ.get('API_CLASSIFICATION_URL')
+
+if api_classification_url is None:
+    raise EnvironmentError("The 'API_CLASSIFICATION_URL' environment variable is not set.")
+
+
