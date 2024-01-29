@@ -1,5 +1,5 @@
 ﻿import dash
-from dash import Dash, html, Output, Input, State, ctx, Patch
+from dash import Dash, html, Output, Input, State, ctx, Patch, DiskcacheManager, CeleryManager
 from dash.exceptions import PreventUpdate
 import pandas as pd
 import requests
@@ -36,8 +36,6 @@ app.title = 'Nutritious app'
 versionning = "0.7.2"
 
 DEBUG = False
-
-from dash import DiskcacheManager, CeleryManager
 
 if 'REDIS_URL' in os.environ:
     # Use Redis & Celery if REDIS_URL set as an env variable
